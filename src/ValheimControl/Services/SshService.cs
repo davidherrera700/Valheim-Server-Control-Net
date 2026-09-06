@@ -52,7 +52,7 @@ public class SshService
             return new SshCommandResult(
                 Success: cmd.ExitStatus == 0,
                 Output: string.IsNullOrWhiteSpace(combined) ? "(no output)" : combined,
-                ExitStatus: cmd.ExitStatus);
+                ExitStatus: cmd.ExitStatus ?? -1);
         }
         catch (Exception ex)
         {
