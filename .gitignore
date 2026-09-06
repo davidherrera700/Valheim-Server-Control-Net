@@ -1,0 +1,20 @@
+# Build output
+bin/
+obj/
+
+# Local, per-PC generated config (never commit real server IPs/usernames)
+config/config.json
+
+# SSH keys should never live in this repo
+*.pem
+*_ed25519
+*_ed25519.pub
+
+# Visual Studio / Rider
+.vs/
+.idea/
+*.user
+
+# OS/editor cruft
+.DS_Store
+Thumbs.db

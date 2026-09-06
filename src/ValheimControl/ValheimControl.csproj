@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>ValheimControl</AssemblyName>
+    <RootNamespace>ValheimControl</RootNamespace>
+
+    <!-- To use a custom icon: drop Assets\valheim.ico into place, then uncomment the line below -->
+    <!-- <ApplicationIcon>Assets\valheim.ico</ApplicationIcon> -->
+
+    <!-- Publish settings for a single, self-contained .exe -->
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- SSH.NET handles the SSH connection natively - no dependency on ssh.exe being on PATH -->
+    <PackageReference Include="SSH.NET" Version="2024.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Assets\valheim.ico" Condition="Exists('Assets\valheim.ico')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>
