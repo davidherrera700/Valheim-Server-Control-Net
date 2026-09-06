@@ -22,6 +22,8 @@
   <ItemGroup>
     <!-- SSH.NET handles the SSH connection natively - no dependency on ssh.exe being on PATH -->
     <PackageReference Include="SSH.NET" Version="2026.0.0" />
+    <!-- Needed for 'dynamic' COM interop with WScript.Shell in ShortcutService -->
+    <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
   </ItemGroup>
 
   <ItemGroup>

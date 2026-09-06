@@ -63,24 +63,42 @@ need the .NET runtime installed - just copy `ValheimControl.exe` over
 
 ## First-time setup on a new PC
 
-This v2 app does not (yet) include its own installer/key-generation
-wizard - for now, either:
+The app now includes a built-in setup wizard - no dependency on the v1
+PowerShell installer.
 
-**Option A - reuse the v1 installer for setup, then run v2 for daily use:**
-1. Run the v1 `Install-ValheimControl.ps1` as before (generates the SSH
-   key, copies it to the server, writes `config.json`, creates shortcuts).
-2. Replace the shortcut's target with the published `ValheimControl.exe`
-   from this v2 project instead of the PowerShell script.
+1. Run `ValheimControl.exe` (or `dotnet run --project src\ValheimControl`
+   during development) on a PC with no existing config.
+2. Since no `config.json` exists yet, the **Setup** window opens automatically.
+3. Enter:
+   - **Server IP or hostname** - your Ubuntu server's LAN IP
+   - **SSH username** - typically `valheim-control`
+   - **SSH port** - `22` unless you've changed it
+   - **Account password** - entered once, never stored, used only to copy
+     this PC's new public key into the server's `authorized_keys`
+4. Click **Run Setup**. The wizard will:
+   - Generate a new ED25519 key pair for this PC (or reuse one if it
+     already exists at `%USERPROFILE%\.ssh\valheim_control_ed25519`)
+   - Copy the public key to the server over a password-authenticated SSH
+     connection
+   - Write `%APPDATA%\ValheimControl\config.json`
+   - Test a passwordless connection using the new key
+   - Create Desktop and Start Menu shortcuts
+5. Once you see "Setup complete", click **Continue to App** to open the
+   main control window.
 
-**Option B - manual setup:**
-1. Generate a key: `ssh-keygen -t ed25519 -f %USERPROFILE%\.ssh\valheim_control_ed25519`
-2. Copy the public key into `~/.ssh/authorized_keys` for the
-   `valheim-control` user on the server.
-3. Create `%APPDATA%\ValheimControl\config.json` by hand (see
-   `config.example.json` in the v1 project for the format).
-4. Run `ValheimControl.exe`.
+**Note:** key generation still shells out to `ssh-keygen.exe` (the
+Windows OpenSSH Client optional feature), since .NET/SSH.NET doesn't
+provide a key-generation utility. This is only needed once, during
+setup - normal day-to-day use (Start/Stop/Restart/Backup/Logs) never
+touches `ssh.exe` and works even if the OpenSSH client isn't installed.
 
-*(A proper v2 installer/setup wizard is on the roadmap - see below.)*
+If you're running via `dotnet run` during development, shortcuts will
+point at a temporary build path. Re-run the wizard after
+`dotnet publish` (see below) to point shortcuts at the permanent `.exe`.
+
+*(If you already ran the old v1 PowerShell installer on this PC, its
+`config.json` is fully compatible - v2 will detect it and skip the
+wizard entirely.)*
 
 ## Notes on the SSH implementation
 
@@ -93,8 +111,7 @@ wizard - for now, either:
 
 ## Roadmap
 
-- [ ] Built-in setup wizard (generate key, copy to server, write config) -
-      no more dependency on the v1 PowerShell installer
+- [x] Built-in setup wizard (generate key, copy to server, write config)
 - [ ] System tray icon with live status polling
 - [ ] Toast notification when a scheduled backup completes
 - [ ] MSI or Inno Setup packaged installer
