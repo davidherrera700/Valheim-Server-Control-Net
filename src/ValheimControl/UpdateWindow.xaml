@@ -1,0 +1,134 @@
+<Window x:Class="ValheimControl.UpdateWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Valheim Control — Update"
+        Width="640" Height="580"
+        MinWidth="560" MinHeight="480"
+        Background="{StaticResource BgDarkBrush}"
+        Foreground="{StaticResource TextPrimaryBrush}"
+        FontFamily="Segoe UI"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- ===== Header ===== -->
+        <StackPanel Grid.Row="0">
+            <Border Height="4" Background="{StaticResource ChevronBandBrush}" />
+            <Border Background="{StaticResource BgTitleBrush}"
+                    BorderBrush="{StaticResource BorderMutedBrush}"
+                    BorderThickness="0,0,0,1"
+                    Padding="20,12">
+                <Grid>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Rectangle Style="{StaticResource SectionAxeStyle}" />
+                        <TextBlock Text="VALHEIM · UPDATE"
+                                   Style="{StaticResource SectionHeaderStyle}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                    <Button x:Name="RefreshButton" Content="&#8635;"
+                            Style="{StaticResource ChipButtonStyle}"
+                            FontSize="15" Padding="8,4"
+                            ToolTip="Check for updates now"
+                            HorizontalAlignment="Right" VerticalAlignment="Center"
+                            Click="RefreshButton_Click" />
+                </Grid>
+            </Border>
+        </StackPanel>
+
+        <!-- ===== Body ===== -->
+        <Grid Grid.Row="1" Margin="24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Style="{StaticResource CardStyle}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="INSTALLED BUILD" Style="{StaticResource StatLabelStyle}" />
+                            <TextBlock x:Name="InstalledBuildText" Text="—"
+                                       Style="{StaticResource MonoTextStyle}" FontSize="16" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="LATEST AVAILABLE" Style="{StaticResource StatLabelStyle}" />
+                            <TextBlock x:Name="LatestBuildText" Text="—"
+                                       Style="{StaticResource MonoTextStyle}" FontSize="16" Margin="0,4,0,0" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Border Style="{StaticResource DividerStyle}" Margin="0,16,0,16" />
+
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse x:Name="StatusDot" Width="10" Height="10"
+                                 Fill="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
+                        <TextBlock x:Name="StatusText" Text="Checking..." FontWeight="SemiBold"
+                                   Margin="10,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <StackPanel Grid.Row="1" Margin="0,18,0,0">
+                <Button x:Name="RunUpdateButton" Content="RUN UPDATE" Tag="Backup, stop, update, restart"
+                        Style="{StaticResource DangerButtonStyle}" HorizontalAlignment="Stretch"
+                        IsEnabled="False" Click="RunUpdateButton_Click" />
+                <TextBlock Text="This backs up the world, stops the server, updates via SteamCMD, then starts it again automatically. Can take a few minutes."
+                           Style="{StaticResource SubtitleTextStyle}" FontSize="11"
+                           Foreground="{StaticResource TextMutedBrush}" Margin="0,8,0,0" TextWrapping="Wrap" />
+
+                <Border Background="{StaticResource BgTitleBrush}" BorderBrush="{StaticResource BorderMutedBrush}"
+                        BorderThickness="1" Padding="14,12" Margin="0,18,0,0">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,14,0">
+                                <TextBlock Text="Auto-update" />
+                                <TextBlock Text="Checks periodically while the app is open and updates automatically, without asking, whenever one's found."
+                                           Style="{StaticResource SubtitleTextStyle}"
+                                           Foreground="{StaticResource TextMutedBrush}" Margin="0,3,0,0" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <ToggleButton Grid.Column="1" x:Name="AutoUpdateToggle" Style="{StaticResource SwitchToggleStyle}"
+                                          VerticalAlignment="Center" Click="AutoUpdateToggle_Click" />
+                        </Grid>
+
+                        <Border Style="{StaticResource DividerStyle}" Margin="0,12,0,12" />
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Check every" VerticalAlignment="Center" />
+                            <ComboBox Grid.Column="1" x:Name="AutoUpdateIntervalBox" Width="150"
+                                      SelectionChanged="AutoUpdateIntervalBox_SelectionChanged">
+                                <ComboBoxItem Content="1 hour" Tag="1" />
+                                <ComboBoxItem Content="3 hours" Tag="3" />
+                                <ComboBoxItem Content="6 hours" Tag="6" />
+                                <ComboBoxItem Content="12 hours" Tag="12" />
+                                <ComboBoxItem Content="24 hours" Tag="24" />
+                            </ComboBox>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <DockPanel Grid.Row="2" Margin="0,18,0,0">
+                <TextBlock DockPanel.Dock="Top" Text="OUTPUT" Style="{StaticResource FieldLabelStyle}" Margin="0,0,0,6" />
+                <TextBox x:Name="OutputBox" Style="{StaticResource LogTextBoxStyle}" />
+            </DockPanel>
+        </Grid>
+    </Grid>
+</Window>

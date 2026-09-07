@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace ValheimControl.Models;
 
 /// <summary>
@@ -16,9 +18,23 @@ public class AppConfig
     public int LogLines { get; set; } = 50;
 
     /// <summary>
-    /// Expands environment variables (e.g. %USERPROFILE%) in the key path,
-    /// same convention the v1 config used.
+    /// When true, MainWindow periodically checks for Valheim updates while
+    /// the app is open and runs the full backup/stop/update/start cycle
+    /// automatically when one's found - no confirmation, since the whole
+    /// point is hands-off. Off by default; turning it on shows a one-time
+    /// warning explaining exactly what it does.
     /// </summary>
+    public bool AutoUpdateEnabled { get; set; }
+
+    /// <summary>How often, in hours, MainWindow checks for updates when AutoUpdateEnabled is true.</summary>
+    public int AutoUpdateCheckIntervalHours { get; set; } = 6;
+
+    /// <summary>
+    /// Expands environment variables (e.g. %USERPROFILE%) in the key path,
+    /// same convention the v1 config used. Computed at runtime, not stored -
+    /// JsonIgnore keeps it out of config.json.
+    /// </summary>
+    [JsonIgnore]
     public string ResolvedSshKeyPath =>
         Environment.ExpandEnvironmentVariables(SshKeyPath);
 }

@@ -109,6 +109,19 @@ wizard entirely.)*
 - Each button click opens a short-lived SSH connection, runs one command,
   and disconnects - simple and stateless, matching the v1 tool's behavior.
 
+## Server-side permission required for "Backup + Reboot Server"
+
+That button additionally needs a `reboot` rule in
+`/etc/sudoers.d/valheim-control` (not required for the other buttons):
+
+```
+valheim-control ALL=(root) NOPASSWD: /usr/sbin/reboot
+```
+
+Run `which reboot` on the server first to confirm the exact path before
+adding this line - sudoers matches the path exactly, and it's occasionally
+`/sbin/reboot` instead depending on the distro.
+
 ## Roadmap
 
 - [x] Built-in setup wizard (generate key, copy to server, write config)

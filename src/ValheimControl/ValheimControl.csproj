@@ -9,8 +9,8 @@
     <AssemblyName>ValheimControl</AssemblyName>
     <RootNamespace>ValheimControl</RootNamespace>
 
-    <!-- To use a custom icon: drop Assets\valheim.ico into place, then uncomment the line below -->
-    <!-- <ApplicationIcon>Assets\valheim.ico</ApplicationIcon> -->
+    <!-- Custom icon: Assets\valheim.ico -->
+    <ApplicationIcon>Assets\valheim.ico</ApplicationIcon>
 
     <!-- Publish settings for a single, self-contained .exe -->
     <SelfContained>true</SelfContained>
@@ -30,6 +30,15 @@
     <None Update="Assets\valheim.ico" Condition="Exists('Assets\valheim.ico')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Theme ornament images, referenced via pack://application:,,,/Assets/... in
+         VikingTheme.xaml. Build action must be Resource for those URIs to resolve. -->
+    <Resource Include="Assets\yggdrasil.png" Condition="Exists('Assets\yggdrasil.png')" />
+    <Resource Include="Assets\axes-crossed.png" Condition="Exists('Assets\axes-crossed.png')" />
+    <Resource Include="Assets\axe-single.png" Condition="Exists('Assets\axe-single.png')" />
+    <Resource Include="Assets\mjolnir-mark.png" Condition="Exists('Assets\mjolnir-mark.png')" />
   </ItemGroup>
 
 </Project>

@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using ValheimControl.Models;
 using ValheimControl.Services;
+using ValheimControl.Theme;
 
 namespace ValheimControl;
 
@@ -12,6 +13,7 @@ public partial class SetupWindow : Window
     public SetupWindow()
     {
         InitializeComponent();
+        DarkTitleBarHelper.Apply(this);
     }
 
     private void AppendLog(string text)

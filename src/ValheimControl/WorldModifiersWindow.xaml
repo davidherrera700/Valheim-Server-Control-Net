@@ -1,0 +1,224 @@
+<Window x:Class="ValheimControl.WorldModifiersWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="World Modifiers"
+        Width="520" SizeToContent="Height"
+        Background="{StaticResource BgDarkBrush}"
+        Foreground="{StaticResource TextPrimaryBrush}"
+        FontFamily="Segoe UI"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display">
+
+    <Window.Resources>
+        <Style x:Key="InfoIconStyle" TargetType="Border">
+            <Setter Property="Width" Value="15" />
+            <Setter Property="Height" Value="15" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="BorderBrush" Value="{StaticResource TextMutedBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Help" />
+            <Setter Property="Margin" Value="6,0,0,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="InfoIconTextStyle" TargetType="TextBlock">
+            <Setter Property="Text" Value="?" />
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="24">
+        <StackPanel>
+            <TextBlock Text="World Modifiers" Style="{StaticResource TitleTextStyle}" FontSize="18" />
+            <TextBlock Text="Only applies the first time this world name is created - has no effect on an existing world. Leave anything as Default to use vanilla Valheim behavior."
+                       Style="{StaticResource SubtitleTextStyle}" Foreground="{StaticResource TextMutedBrush}"
+                       Margin="0,6,0,16" TextWrapping="Wrap" />
+
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="PRESET" Style="{StaticResource FieldLabelStyle}" />
+                <Border Style="{StaticResource InfoIconStyle}"
+                        ToolTip="Applies Iron Gate's bundled combination of settings below at once. Any individual setting you also choose overrides just that one category.">
+                    <TextBlock Style="{StaticResource InfoIconTextStyle}" />
+                </Border>
+            </StackPanel>
+            <ComboBox x:Name="PresetBox" SelectedIndex="0" Margin="0,4,0,4">
+                <ComboBoxItem Content="Default" Tag="default" />
+                <ComboBoxItem Content="Casual" Tag="casual" />
+                <ComboBoxItem Content="Easy" Tag="easy" />
+                <ComboBoxItem Content="Hard" Tag="hard" />
+                <ComboBoxItem Content="Hardcore" Tag="hardcore" />
+                <ComboBoxItem Content="Immersive" Tag="immersive" />
+                <ComboBoxItem Content="Hammer (building-focused)" Tag="hammer" />
+            </ComboBox>
+            <TextBlock Text="A preset sets a bundle of modifiers internally - leaving one below at Default means that category follows the preset. Pick a specific value here only to override just that one category."
+                       Style="{StaticResource SubtitleTextStyle}" FontSize="10"
+                       Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,14" TextWrapping="Wrap" />
+
+            <Border Style="{StaticResource DividerStyle}" Margin="0,0,0,14" />
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="12" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Grid.Column="0">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="COMBAT" Style="{StaticResource FieldLabelStyle}" />
+                        <Border Style="{StaticResource InfoIconStyle}"
+                                ToolTip="How tough enemies are - damage dealt and received. Very Hard is the most punishing, Very Easy the most forgiving.">
+                            <TextBlock Style="{StaticResource InfoIconTextStyle}" />
+                        </Border>
+                    </StackPanel>
+                    <ComboBox x:Name="CombatBox" SelectedIndex="0" Margin="0,4,0,0">
+                        <ComboBoxItem Content="Default" Tag="default" />
+                        <ComboBoxItem Content="Very Easy" Tag="veryeasy" />
+                        <ComboBoxItem Content="Easy" Tag="easy" />
+                        <ComboBoxItem Content="Hard" Tag="hard" />
+                        <ComboBoxItem Content="Very Hard" Tag="veryhard" />
+                    </ComboBox>
+                </StackPanel>
+                <StackPanel Grid.Row="0" Grid.Column="2">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="DEATH PENALTY" Style="{StaticResource FieldLabelStyle}" />
+                        <Border Style="{StaticResource InfoIconStyle}"
+                                ToolTip="What you lose on death - skills, inventory, equipped gear. Hardcore is the harshest, Casual the most forgiving.">
+                            <TextBlock Style="{StaticResource InfoIconTextStyle}" />
+                        </Border>
+                    </StackPanel>
+                    <ComboBox x:Name="DeathPenaltyBox" SelectedIndex="0" Margin="0,4,0,0">
+                        <ComboBoxItem Content="Default" Tag="default" />
+                        <ComboBoxItem Content="Casual" Tag="casual" />
+                        <ComboBoxItem Content="Very Easy" Tag="veryeasy" />
+                        <ComboBoxItem Content="Easy" Tag="easy" />
+                        <ComboBoxItem Content="Hard" Tag="hard" />
+                        <ComboBoxItem Content="Hardcore" Tag="hardcore" />
+                    </ComboBox>
+                </StackPanel>
+
+                <StackPanel Grid.Row="2" Grid.Column="0">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="RESOURCES" Style="{StaticResource FieldLabelStyle}" />
+                        <Border Style="{StaticResource InfoIconStyle}"
+                                ToolTip="How much loot and crafting material you gather from the world. Much More increases drops, Much Less reduces them.">
+                            <TextBlock Style="{StaticResource InfoIconTextStyle}" />
+                        </Border>
+                    </StackPanel>
+                    <ComboBox x:Name="ResourcesBox" SelectedIndex="0" Margin="0,4,0,0">
+                        <ComboBoxItem Content="Default" Tag="default" />
+                        <ComboBoxItem Content="Much Less" Tag="muchless" />
+                        <ComboBoxItem Content="Less" Tag="less" />
+                        <ComboBoxItem Content="More" Tag="more" />
+                        <ComboBoxItem Content="Much More" Tag="muchmore" />
+                    </ComboBox>
+                </StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="2">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="RAIDS" Style="{StaticResource FieldLabelStyle}" />
+                        <Border Style="{StaticResource InfoIconStyle}"
+                                ToolTip="How often enemies raid your base. None turns raids off entirely; Much More makes them frequent.">
+                            <TextBlock Style="{StaticResource InfoIconTextStyle}" />
+                        </Border>
+                    </StackPanel>
+                    <ComboBox x:Name="RaidsBox" SelectedIndex="0" Margin="0,4,0,0">
+                        <ComboBoxItem Content="Default" Tag="default" />
+                        <ComboBoxItem Content="None" Tag="none" />
+                        <ComboBoxItem Content="Much Less" Tag="muchless" />
+                        <ComboBoxItem Content="Less" Tag="less" />
+                        <ComboBoxItem Content="More" Tag="more" />
+                        <ComboBoxItem Content="Much More" Tag="muchmore" />
+                    </ComboBox>
+                </StackPanel>
+            </Grid>
+
+            <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                <TextBlock Text="PORTALS" Style="{StaticResource FieldLabelStyle}" />
+                <Border Style="{StaticResource InfoIconStyle}"
+                        ToolTip="What you're allowed to carry through portals. Casual allows everything (including ore); Very Hard blocks the most.">
+                    <TextBlock Style="{StaticResource InfoIconTextStyle}" />
+                </Border>
+            </StackPanel>
+            <ComboBox x:Name="PortalsBox" SelectedIndex="0" Margin="0,4,0,14">
+                <ComboBoxItem Content="Default" Tag="default" />
+                <ComboBoxItem Content="Casual (no restrictions)" Tag="casual" />
+                <ComboBoxItem Content="Hard" Tag="hard" />
+                <ComboBoxItem Content="Very Hard" Tag="veryhard" />
+            </ComboBox>
+
+            <Border Style="{StaticResource DividerStyle}" Margin="0,0,0,14" />
+
+            <TextBlock Text="SPECIAL RULES" Style="{StaticResource FieldLabelStyle}" Margin="0,0,0,4" />
+
+            <Border Background="{StaticResource BgTitleBrush}" BorderBrush="{StaticResource BorderMutedBrush}"
+                    BorderThickness="1" Padding="12,10" Margin="0,0,0,8">
+                <Grid>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="No map" VerticalAlignment="Center" />
+                        <Border Style="{StaticResource InfoIconStyle}"
+                                ToolTip="Disables the in-game map entirely - you navigate by landmarks and memory only.">
+                            <TextBlock Style="{StaticResource InfoIconTextStyle}" />
+                        </Border>
+                    </StackPanel>
+                    <ToggleButton x:Name="NoMapToggle" Style="{StaticResource SwitchToggleStyle}" HorizontalAlignment="Right" />
+                </Grid>
+            </Border>
+            <Border Background="{StaticResource BgTitleBrush}" BorderBrush="{StaticResource BorderMutedBrush}"
+                    BorderThickness="1" Padding="12,10" Margin="0,0,0,8">
+                <Grid>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Events only trigger near players" VerticalAlignment="Center" />
+                        <Border Style="{StaticResource InfoIconStyle}"
+                                ToolTip="Random world events (like raids) only start when players are nearby, instead of anywhere in the world.">
+                            <TextBlock Style="{StaticResource InfoIconTextStyle}" />
+                        </Border>
+                    </StackPanel>
+                    <ToggleButton x:Name="PlayerEventsToggle" Style="{StaticResource SwitchToggleStyle}" HorizontalAlignment="Right" />
+                </Grid>
+            </Border>
+            <Border Background="{StaticResource BgTitleBrush}" BorderBrush="{StaticResource BorderMutedBrush}"
+                    BorderThickness="1" Padding="12,10" Margin="0,0,0,8">
+                <Grid>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Passive mobs" VerticalAlignment="Center" />
+                        <Border Style="{StaticResource InfoIconStyle}"
+                                ToolTip="Creatures won't attack unless you provoke them first.">
+                            <TextBlock Style="{StaticResource InfoIconTextStyle}" />
+                        </Border>
+                    </StackPanel>
+                    <ToggleButton x:Name="PassiveMobsToggle" Style="{StaticResource SwitchToggleStyle}" HorizontalAlignment="Right" />
+                </Grid>
+            </Border>
+            <Border Background="{StaticResource BgTitleBrush}" BorderBrush="{StaticResource BorderMutedBrush}"
+                    BorderThickness="1" Padding="12,10" Margin="0,0,18,0">
+                <Grid>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="No build cost" VerticalAlignment="Center" />
+                        <Border Style="{StaticResource InfoIconStyle}"
+                                ToolTip="Building and crafting require no materials - creative/sandbox mode.">
+                            <TextBlock Style="{StaticResource InfoIconTextStyle}" />
+                        </Border>
+                    </StackPanel>
+                    <ToggleButton x:Name="NoBuildCostToggle" Style="{StaticResource SwitchToggleStyle}" HorizontalAlignment="Right" />
+                </Grid>
+            </Border>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+                <Button x:Name="CancelButton" Content="CANCEL" Style="{StaticResource GhostButtonStyle}"
+                        Margin="0,0,10,0" Click="CancelButton_Click" />
+                <Button x:Name="ApplyButton" Content="APPLY" Style="{StaticResource PrimaryButtonStyle}"
+                        Click="ApplyButton_Click" />
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</Window>

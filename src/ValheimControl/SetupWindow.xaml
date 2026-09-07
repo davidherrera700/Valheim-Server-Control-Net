@@ -2,7 +2,9 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Valheim Control - First-Time Setup"
-        Height="560" Width="480"
+        Height="580" Width="480"
+        Background="{StaticResource BgDarkBrush}"
+        Foreground="{StaticResource TextPrimaryBrush}"
         ResizeMode="CanMinimize"
         WindowStartupLocation="CenterScreen"
         FontFamily="Segoe UI">
@@ -10,14 +12,9 @@
     <Window.Resources>
         <Style TargetType="TextBox">
             <Setter Property="Margin" Value="0,4,0,10" />
-            <Setter Property="Padding" Value="6" />
         </Style>
         <Style TargetType="PasswordBox">
             <Setter Property="Margin" Value="0,4,0,10" />
-            <Setter Property="Padding" Value="6" />
-        </Style>
-        <Style TargetType="TextBlock" x:Key="LabelStyle">
-            <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
     </Window.Resources>
 
@@ -26,46 +23,50 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Margin="0,0,0,12">
-            <TextBlock Text="Valheim Server Control - Setup" FontSize="18" FontWeight="Bold" />
-            <TextBlock Text="Connects this PC to your Ubuntu Valheim server over SSH."
-                       Foreground="Gray" Margin="0,4,0,0" TextWrapping="Wrap" />
-        </StackPanel>
+        <TextBlock Grid.Row="0" Text="VALHEIM SERVER CONTROL - SETUP" Style="{StaticResource TitleTextStyle}" FontSize="17" />
 
-        <StackPanel Grid.Row="1">
-            <TextBlock Text="Server IP or hostname" Style="{StaticResource LabelStyle}" />
+        <Border Grid.Row="1" Height="2" Background="{StaticResource RuneDividerBrush}" Margin="0,8,0,4" />
+
+        <TextBlock Grid.Row="2" Text="Connects this PC to your Ubuntu Valheim server over SSH."
+                   Style="{StaticResource SubtitleTextStyle}" Margin="0,4,0,14" />
+
+        <StackPanel Grid.Row="3">
+            <TextBlock Text="SERVER IP OR HOSTNAME" Style="{StaticResource FieldLabelStyle}" />
             <TextBox x:Name="ServerBox" />
 
-            <TextBlock Text="SSH username" Style="{StaticResource LabelStyle}" />
+            <TextBlock Text="SSH USERNAME" Style="{StaticResource FieldLabelStyle}" />
             <TextBox x:Name="UsernameBox" Text="valheim-control" />
 
-            <TextBlock Text="SSH port" Style="{StaticResource LabelStyle}" />
+            <TextBlock Text="SSH PORT" Style="{StaticResource FieldLabelStyle}" />
             <TextBox x:Name="PortBox" Text="22" />
 
-            <TextBlock Text="Account password (used once, never stored)" Style="{StaticResource LabelStyle}" />
+            <TextBlock Text="ACCOUNT PASSWORD (used once, never stored)" Style="{StaticResource FieldLabelStyle}" />
             <PasswordBox x:Name="PasswordBox" />
+
+            <StackPanel Orientation="Horizontal" Margin="0,6,0,10">
+                <Button x:Name="InstallButton" Content="RUN SETUP" Click="InstallButton_Click" />
+                <Button x:Name="ContinueButton" Content="CONTINUE TO APP"
+                        Margin="10,4,4,4" IsEnabled="False" Click="ContinueButton_Click" />
+            </StackPanel>
         </StackPanel>
 
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,4,0,10">
-            <Button x:Name="InstallButton" Content="Run Setup" Padding="14,8" Click="InstallButton_Click" />
-            <Button x:Name="ContinueButton" Content="Continue to App" Padding="14,8" Margin="10,0,0,0"
-                    IsEnabled="False" Click="ContinueButton_Click" />
-        </StackPanel>
-
-        <TextBox x:Name="LogBox" Grid.Row="3"
+        <TextBox x:Name="LogBox" Grid.Row="4"
                  IsReadOnly="True"
                  VerticalScrollBarVisibility="Auto"
                  HorizontalScrollBarVisibility="Auto"
                  TextWrapping="NoWrap"
                  FontFamily="Consolas" FontSize="12"
-                 Background="#1E1E1E" Foreground="#DCDCDC"
-                 Padding="6" Margin="0,0,0,10" />
+                 Background="{StaticResource LogBgBrush}"
+                 Foreground="{StaticResource LogTextBrush}"
+                 BorderBrush="{StaticResource BorderMutedBrush}"
+                 Padding="8" Margin="0,0,0,10" />
 
-        <TextBlock Grid.Row="4" Foreground="Gray" FontSize="11" TextWrapping="Wrap"
+        <TextBlock Grid.Row="5" Style="{StaticResource SubtitleTextStyle}" FontSize="10"
                    Text="Requires the Windows OpenSSH Client optional feature for key generation (Settings &gt; Apps &gt; Optional Features)." />
     </Grid>
 </Window>

@@ -1,0 +1,236 @@
+<Window x:Class="ValheimControl.ConfigWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Runestones — Config"
+        Width="1080" Height="700"
+        MinWidth="900" MinHeight="600"
+        Background="{StaticResource BgDarkBrush}"
+        Foreground="{StaticResource TextPrimaryBrush}"
+        FontFamily="Segoe UI"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display">
+
+    <!-- Runestones config editor: edit start_server.sh (Form or Raw view) and the
+         3 player-list files (Raw only). No mod management here - this server runs
+         vanilla Valheim, nothing installed to manage yet. -->
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- ===== Header ===== -->
+        <StackPanel Grid.Row="0">
+            <Border Height="4" Background="{StaticResource ChevronBandBrush}" />
+            <Border Background="{StaticResource BgTitleBrush}"
+                    BorderBrush="{StaticResource BorderMutedBrush}"
+                    BorderThickness="0,0,0,1"
+                    Padding="20,12">
+                <Grid>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Rectangle Style="{StaticResource SectionAxeStyle}" />
+                        <TextBlock Text="RUNESTONES · CONFIG"
+                                   Style="{StaticResource SectionHeaderStyle}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Button x:Name="RefreshButton" Content="&#8635;"
+                                Style="{StaticResource ChipButtonStyle}"
+                                FontSize="15" Padding="8,4"
+                                ToolTip="Reload from server"
+                                Margin="0,0,10,0" Click="RefreshButton_Click" />
+                        <Button x:Name="ChangeDeletePasswordButton" Content="CHANGE DELETE PASSWORD"
+                                Style="{StaticResource ChipButtonStyle}"
+                                Click="ChangeDeletePasswordButton_Click" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </StackPanel>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="260" />
+                <ColumnDefinition Width="1" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="1" Background="{StaticResource BorderMutedBrush}" />
+
+            <!-- Left: file list -->
+            <Border Grid.Column="0" Background="{StaticResource BgTitleBrush}">
+                <DockPanel Margin="0,18">
+                    <TextBlock DockPanel.Dock="Top" Text="FILES"
+                               Style="{StaticResource FieldLabelStyle}" Margin="18,0,18,8" />
+
+                    <ListBox x:Name="FileList" DockPanel.Dock="Top"
+                             SelectionChanged="FileList_SelectionChanged" />
+
+                    <TextBlock DockPanel.Dock="Bottom"
+                               Text="Edits are written on save. Changes to start_server.sh require a server restart to take effect."
+                               Style="{StaticResource SubtitleTextStyle}"
+                               Foreground="{StaticResource TextMutedBrush}"
+                               Margin="18,14,18,0" />
+                </DockPanel>
+            </Border>
+
+            <!-- Right: editor -->
+            <Grid Grid.Column="2" x:Name="EditorArea" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Margin="22,20,22,0">
+                    <StackPanel>
+                        <TextBlock x:Name="FileTitle" Text=""
+                                   Style="{StaticResource TitleTextStyle}" FontSize="18" />
+                        <TextBlock x:Name="FileMeta" Text=""
+                                   Style="{StaticResource SubtitleTextStyle}"
+                                   Foreground="{StaticResource TextMutedBrush}" Margin="0,5,0,0" />
+                    </StackPanel>
+                    <StackPanel x:Name="ViewSwitchPanel" Orientation="Horizontal"
+                                HorizontalAlignment="Right" VerticalAlignment="Top">
+                        <Button x:Name="FormViewButton" Content="FORM" Style="{StaticResource ChipButtonStyle}"
+                                Background="Transparent" Margin="0,0,8,0" Click="FormViewButton_Click" />
+                        <Button x:Name="RawViewButton" Content="RAW" Style="{StaticResource ChipButtonStyle}"
+                                BorderBrush="{StaticResource AccentGoldBrush}" Click="RawViewButton_Click" />
+                    </StackPanel>
+                </Grid>
+
+                <Border Grid.Row="0" Style="{StaticResource DividerStyle}"
+                        VerticalAlignment="Bottom" Margin="22,0,22,-1" />
+
+                <!-- Form fields (start_server.sh only) -->
+                <Grid x:Name="FormFieldsPanel" Grid.Row="1" Margin="22,18,22,0" Visibility="Collapsed">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="18" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="14" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="14" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Grid.Column="0">
+                        <TextBlock Text="SERVER NAME" Style="{StaticResource FieldLabelStyle}" />
+                        <TextBox x:Name="ServerNameBox" TextChanged="FormField_Changed" />
+                    </StackPanel>
+                    <StackPanel Grid.Row="0" Grid.Column="2">
+                        <TextBlock Text="WORLD" Style="{StaticResource FieldLabelStyle}" />
+                        <TextBox x:Name="WorldBox" TextChanged="FormField_Changed" />
+
+                        <TextBlock Text="SWAP TO EXISTING WORLD" Style="{StaticResource FieldLabelStyle}"
+                                   FontSize="10" Margin="0,10,0,4" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <ComboBox x:Name="WorldPicker" Grid.Column="0" />
+                            <Button x:Name="SwapWorldButton" Grid.Column="1" Content="SWAP"
+                                    Style="{StaticResource ChipButtonStyle}" Margin="8,0,0,0"
+                                    Click="SwapWorldButton_Click" />
+                            <Button x:Name="DeleteWorldButton" Grid.Column="2" Content="DELETE"
+                                    Style="{StaticResource ChipButtonStyle}"
+                                    BorderBrush="{StaticResource StatusOfflineBrush}"
+                                    Foreground="{StaticResource StatusOfflineTextBrush}"
+                                    Margin="8,0,0,0" Click="DeleteWorldButton_Click" />
+                        </Grid>
+
+                        <TextBlock Text="CREATE A NEW WORLD" Style="{StaticResource FieldLabelStyle}"
+                                   FontSize="10" Margin="0,10,0,4" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="NewWorldNameBox" Grid.Column="0" />
+                            <Button x:Name="CreateWorldButton" Grid.Column="1" Content="CREATE"
+                                    Style="{StaticResource ChipButtonStyle}"
+                                    BorderBrush="{StaticResource AccentGoldBrush}"
+                                    Margin="8,0,0,0" Click="CreateWorldButton_Click" />
+                        </Grid>
+
+                        <TextBlock Text="Swap or Create fills the World field above - nothing is saved until you click Save below."
+                                   Style="{StaticResource SubtitleTextStyle}" FontSize="10"
+                                   Foreground="{StaticResource TextMutedBrush}" Margin="0,6,0,0" TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2" Grid.Column="0">
+                        <TextBlock Text="PORT" Style="{StaticResource FieldLabelStyle}" />
+                        <TextBox x:Name="PortBox" Style="{StaticResource MonoTextBoxStyle}" TextChanged="FormField_Changed" />
+                    </StackPanel>
+                    <StackPanel Grid.Row="2" Grid.Column="2">
+                        <TextBlock Text="PASSWORD" Style="{StaticResource FieldLabelStyle}" />
+                        <TextBox x:Name="WorldPasswordBox" TextChanged="FormField_Changed" />
+                    </StackPanel>
+
+                    <Border Grid.Row="4" Grid.Column="0" Background="{StaticResource BgTitleBrush}"
+                            BorderBrush="{StaticResource BorderMutedBrush}" BorderThickness="1" Padding="14,12">
+                        <Grid>
+                            <TextBlock Text="Public listing" VerticalAlignment="Center" />
+                            <ToggleButton x:Name="PublicToggle" Style="{StaticResource SwitchToggleStyle}"
+                                          HorizontalAlignment="Right" Click="FormField_Changed" />
+                        </Grid>
+                    </Border>
+                    <Border Grid.Row="4" Grid.Column="2" Background="{StaticResource BgTitleBrush}"
+                            BorderBrush="{StaticResource BorderMutedBrush}" BorderThickness="1" Padding="14,12">
+                        <Grid>
+                            <TextBlock Text="Crossplay" VerticalAlignment="Center" />
+                            <ToggleButton x:Name="CrossplayToggle" Style="{StaticResource SwitchToggleStyle}"
+                                          HorizontalAlignment="Right" Click="FormField_Changed" />
+                        </Grid>
+                    </Border>
+                </Grid>
+
+                <!-- Raw text view -->
+                <DockPanel x:Name="RawViewPanel" Grid.Row="1" Grid.RowSpan="2" Margin="22,18,22,18">
+                    <TextBlock DockPanel.Dock="Top" x:Name="RawViewLabel" Text="RAW FILE CONTENT"
+                               Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox x:Name="RawBox" Style="{StaticResource LogTextBoxStyle}"
+                             IsReadOnly="False"
+                             AcceptsReturn="True"
+                             TextWrapping="NoWrap"
+                             HorizontalScrollBarVisibility="Auto"
+                             TextChanged="RawBox_TextChanged" />
+                </DockPanel>
+
+                <!-- Save bar -->
+                <Border Grid.Row="3" BorderBrush="{StaticResource BorderMutedBrush}" BorderThickness="0,1,0,0"
+                        Padding="22,14">
+                    <Grid>
+                        <StackPanel x:Name="DirtyNotice" Orientation="Horizontal" VerticalAlignment="Center"
+                                    Visibility="Collapsed">
+                            <Rectangle Style="{StaticResource DiamondMarkerStyle}"
+                                       Fill="{StaticResource StatusWarningBrush}" Width="7" Height="7" />
+                            <TextBlock Text="Unsaved changes"
+                                       Foreground="{StaticResource StatusWarningBrush}"
+                                       FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button x:Name="RevertButton" Content="REVERT" Style="{StaticResource GhostButtonStyle}"
+                                    Margin="0,0,10,0" Click="RevertButton_Click" />
+                            <Button x:Name="SaveButton" Content="SAVE" Style="{StaticResource PrimaryButtonStyle}"
+                                    Click="SaveButton_Click" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- Shown before any file is selected -->
+            <TextBlock x:Name="EmptyStateText" Grid.Column="2"
+                       Text="Select a file on the left to view or edit it."
+                       Style="{StaticResource SubtitleTextStyle}"
+                       Foreground="{StaticResource TextMutedBrush}"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Grid>
+    </Grid>
+</Window>
