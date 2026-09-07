@@ -13,8 +13,10 @@ namespace ValheimControl;
 
 public partial class MainWindow : Window
 {
-    private static readonly TimeSpan StatusPollInterval = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan AutoUpdateCheckPollInterval = TimeSpan.FromMinutes(15);
+
+    private TimeSpan CurrentPollInterval =>
+        TimeSpan.FromSeconds(Math.Max(5, _config?.PollingIntervalSeconds ?? 30));
 
     private AppConfig? _config;
     private SshService? _ssh;
@@ -24,6 +26,7 @@ public partial class MainWindow : Window
     private DispatcherTimer? _autoUpdateTimer;
     private DateTime? _lastAutoUpdateCheckUtc;
     private int _secondsUntilNextPoll;
+    private int _recentJoinCount;
     private bool _isBusy;
 
     public MainWindow()
@@ -52,6 +55,7 @@ public partial class MainWindow : Window
         {
             _config = ConfigService.Load();
             _ssh = new SshService(_config);
+            ThemeService.ApplyAccentColor(_config.AccentColorPreset);
         }
         catch (Exception ex)
         {
@@ -63,13 +67,15 @@ public partial class MainWindow : Window
 
         HostLabel.Text = _config.Server;
 
+        ShowWhatsNewIfNeeded();
+
         AppendLog($"Connected config: {_config.User}@{_config.Server} (port {_config.SshPort})");
         await RefreshStatusAsync();
         await RefreshLastBackupAsync();
         await RefreshWorldAndUptimeAsync();
         await RefreshPlayerActivityAsync();
 
-        _statusTimer = new DispatcherTimer { Interval = StatusPollInterval };
+        _statusTimer = new DispatcherTimer { Interval = CurrentPollInterval };
         _statusTimer.Tick += StatusTimer_Tick;
         _statusTimer.Start();
 
@@ -194,7 +200,15 @@ public partial class MainWindow : Window
 
     private void ResetPollCountdown()
     {
-        _secondsUntilNextPoll = (int)StatusPollInterval.TotalSeconds;
+        // Self-correct the running timer's interval here too, so a change
+        // made in SettingsWindow (which shares this same AppConfig instance)
+        // takes effect from the next cycle without needing an app restart.
+        if (_statusTimer is not null && _statusTimer.Interval != CurrentPollInterval)
+        {
+            _statusTimer.Interval = CurrentPollInterval;
+        }
+
+        _secondsUntilNextPoll = (int)CurrentPollInterval.TotalSeconds;
         RefreshCountdown.Text = FormatCountdown(_secondsUntilNextPoll);
     }
 
@@ -348,6 +362,7 @@ public partial class MainWindow : Window
 
         if (entries.Count == 0)
         {
+            _recentJoinCount = 0;
             PlayerCount.Text = "none yet";
             PlayerRosterPanel.Children.Add(new TextBlock
             {
@@ -357,6 +372,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        _recentJoinCount = entries.Count;
         PlayerCount.Text = $"{entries.Count} seen";
 
         // Most recent first, capped so the panel doesn't grow unbounded over a long session.
@@ -445,15 +461,35 @@ public partial class MainWindow : Window
         ResetPollCountdown();
     }
 
+    /// <summary>
+    /// Shows a confirmation dialog for a destructive action, respecting the
+    /// ConfirmDestructiveActions guardrail (skips the dialog entirely if the
+    /// user turned it off) and appending a recent-joins heads-up when
+    /// WarnIfPlayersRecentlyJoined is on and someone's actually joined since
+    /// the last restart. Returns true if the action should proceed.
+    /// </summary>
+    private bool ConfirmDestructiveAction(string title, string message)
+    {
+        if (_config?.ConfirmDestructiveActions == false) return true;
+
+        var fullMessage = message;
+        if (_config?.WarnIfPlayersRecentlyJoined == true && _recentJoinCount > 0)
+        {
+            fullMessage += $"\n\nHeads up: {_recentJoinCount} player(s) have joined since the last restart " +
+                            "(this doesn't guarantee anyone's online right now, just that someone has been recently).";
+        }
+
+        return MessageBox.Show(fullMessage, title, MessageBoxButton.YesNo, MessageBoxImage.Warning)
+            == MessageBoxResult.Yes;
+    }
+
     private async void StopButton_Click(object sender, RoutedEventArgs e)
     {
-        var confirm = MessageBox.Show(
-            "Are you sure you want to stop the Valheim server? Players will be disconnected.",
+        var confirmed = ConfirmDestructiveAction(
             "Confirm Stop",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning);
+            "Are you sure you want to stop the Valheim server? Players will be disconnected.");
 
-        if (confirm != MessageBoxResult.Yes || _ssh is null) return;
+        if (!confirmed || _ssh is null) return;
 
         SetBusy(true);
         AppendLog("Stopping Valheim...");
@@ -525,18 +561,16 @@ public partial class MainWindow : Window
 
     private async void BackupRebootButton_Click(object sender, RoutedEventArgs e)
     {
-        var confirm = MessageBox.Show(
+        var confirmed = ConfirmDestructiveAction(
+            "Confirm Backup + Reboot",
             "This will:\n" +
             "  1. Stop the Valheim server (disconnecting any players)\n" +
             "  2. Run a manual backup\n" +
             "  3. Reboot the entire Ubuntu host\n\n" +
             "The server will be offline for a few minutes while the host restarts, " +
-            "then it will come back online automatically. Continue?",
-            "Confirm Backup + Reboot",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning);
+            "then it will come back online automatically. Continue?");
 
-        if (confirm != MessageBoxResult.Yes || _ssh is null) return;
+        if (!confirmed || _ssh is null) return;
 
         SetBusy(true);
 
@@ -602,6 +636,50 @@ public partial class MainWindow : Window
         if (_config is null) return;
         var updateWindow = new UpdateWindow(_config) { Owner = this };
         updateWindow.ShowDialog();
+    }
+
+    /// <summary>
+    /// Shows the What's New popup only if there are notes for the currently
+    /// running version AND the user hasn't already dismissed it (with the
+    /// "don't show again" toggle) for this exact version. A future version
+    /// bump means LastDismissedReleaseNotesVersion no longer matches
+    /// AppVersion.Current, so this naturally reappears on the next update.
+    /// </summary>
+    private void ShowWhatsNewIfNeeded()
+    {
+        if (_config is null) return;
+
+        var notes = ReleaseNotes.ForCurrentVersion;
+        if (notes is null) return;
+
+        if (_config.LastDismissedReleaseNotesVersion == AppVersion.Current) return;
+
+        var window = new WhatsNewWindow(AppVersion.Current, notes) { Owner = this };
+        window.ShowDialog();
+
+        if (window.DontShowAgain)
+        {
+            _config.LastDismissedReleaseNotesVersion = AppVersion.Current;
+            ConfigService.Save(_config);
+        }
+    }
+
+    private void SettingsWindowButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_config is null) return;
+        var settingsWindow = new SettingsWindow(_config) { Owner = this };
+        settingsWindow.ShowDialog();
+    }
+
+    private async void SwapWorldQuickButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_config is null) return;
+        var swapWindow = new SwapWorldWindow(_config) { Owner = this };
+        swapWindow.ShowDialog();
+
+        // Whatever happened in there (swapped + restarted, swapped only, or
+        // cancelled), refresh so the dashboard reflects current reality.
+        await RefreshWorldAndUptimeAsync();
     }
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)

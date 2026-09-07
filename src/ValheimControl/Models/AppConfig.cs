@@ -29,6 +29,30 @@ public class AppConfig
     /// <summary>How often, in hours, MainWindow checks for updates when AutoUpdateEnabled is true.</summary>
     public int AutoUpdateCheckIntervalHours { get; set; } = 6;
 
+    /// <summary>How often, in seconds, MainWindow polls server status/backup/world/uptime/roster.</summary>
+    public int PollingIntervalSeconds { get; set; } = 30;
+
+    /// <summary>When true (default), Stop/Delete World/Backup+Reboot/Update all show a confirmation first.</summary>
+    public bool ConfirmDestructiveActions { get; set; } = true;
+
+    /// <summary>
+    /// When true (default), Stop and Backup+Reboot confirmations mention how
+    /// many players have joined since the last restart - a heads-up, not a
+    /// guarantee, since the app can't reliably know who's currently online.
+    /// </summary>
+    public bool WarnIfPlayersRecentlyJoined { get; set; } = true;
+
+    /// <summary>Key into ThemeService.AccentPresets - which accent color is active.</summary>
+    public string AccentColorPreset { get; set; } = "gold";
+
+    /// <summary>
+    /// If this matches AppVersion.Current, the "What's New" popup is
+    /// suppressed - only set when the user explicitly checks "don't show
+    /// again" for that specific version. A future version bump naturally
+    /// won't match anymore, so the popup reappears automatically.
+    /// </summary>
+    public string? LastDismissedReleaseNotesVersion { get; set; }
+
     /// <summary>
     /// Expands environment variables (e.g. %USERPROFILE%) in the key path,
     /// same convention the v1 config used. Computed at runtime, not stored -

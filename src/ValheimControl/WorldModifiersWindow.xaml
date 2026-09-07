@@ -12,23 +12,9 @@
         TextOptions.TextFormattingMode="Display">
 
     <Window.Resources>
-        <Style x:Key="InfoIconStyle" TargetType="Border">
-            <Setter Property="Width" Value="15" />
-            <Setter Property="Height" Value="15" />
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="BorderBrush" Value="{StaticResource TextMutedBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
+        <Style x:Key="TooltipRowStyle" TargetType="StackPanel">
             <Setter Property="Cursor" Value="Help" />
-            <Setter Property="Margin" Value="6,0,0,0" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-        </Style>
-        <Style x:Key="InfoIconTextStyle" TargetType="TextBlock">
-            <Setter Property="Text" Value="?" />
-            <Setter Property="FontSize" Value="10" />
-            <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
-            <Setter Property="HorizontalAlignment" Value="Center" />
-            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="ToolTipService.InitialShowDelay" Value="75" />
         </Style>
     </Window.Resources>
 
@@ -39,10 +25,13 @@
                        Style="{StaticResource SubtitleTextStyle}" Foreground="{StaticResource TextMutedBrush}"
                        Margin="0,6,0,16" TextWrapping="Wrap" />
 
-            <StackPanel Orientation="Horizontal">
+            <StackPanel Orientation="Horizontal" Style="{StaticResource TooltipRowStyle}">
+                <StackPanel.ToolTip>
+                    <TextBlock MaxWidth="280" TextWrapping="Wrap"
+                               Text="Applies Iron Gate's bundled combination of settings below at once. Any individual setting you also choose overrides just that one category." />
+                </StackPanel.ToolTip>
                 <TextBlock Text="PRESET" Style="{StaticResource FieldLabelStyle}" />
-                <Border Style="{StaticResource InfoIconStyle}"
-                        ToolTip="Applies Iron Gate's bundled combination of settings below at once. Any individual setting you also choose overrides just that one category.">
+                <Border Style="{StaticResource InfoIconStyle}">
                     <TextBlock Style="{StaticResource InfoIconTextStyle}" />
                 </Border>
             </StackPanel>
@@ -74,10 +63,13 @@
                 </Grid.RowDefinitions>
 
                 <StackPanel Grid.Row="0" Grid.Column="0">
-                    <StackPanel Orientation="Horizontal">
+                    <StackPanel Orientation="Horizontal" Style="{StaticResource TooltipRowStyle}">
+                        <StackPanel.ToolTip>
+                            <TextBlock MaxWidth="240" TextWrapping="Wrap"
+                                       Text="How tough enemies are - damage dealt and received. Very Hard is the most punishing, Very Easy the most forgiving." />
+                        </StackPanel.ToolTip>
                         <TextBlock Text="COMBAT" Style="{StaticResource FieldLabelStyle}" />
-                        <Border Style="{StaticResource InfoIconStyle}"
-                                ToolTip="How tough enemies are - damage dealt and received. Very Hard is the most punishing, Very Easy the most forgiving.">
+                        <Border Style="{StaticResource InfoIconStyle}">
                             <TextBlock Style="{StaticResource InfoIconTextStyle}" />
                         </Border>
                     </StackPanel>
@@ -90,10 +82,13 @@
                     </ComboBox>
                 </StackPanel>
                 <StackPanel Grid.Row="0" Grid.Column="2">
-                    <StackPanel Orientation="Horizontal">
+                    <StackPanel Orientation="Horizontal" Style="{StaticResource TooltipRowStyle}">
+                        <StackPanel.ToolTip>
+                            <TextBlock MaxWidth="240" TextWrapping="Wrap"
+                                       Text="What you lose on death - skills, inventory, equipped gear. Hardcore is the harshest, Casual the most forgiving." />
+                        </StackPanel.ToolTip>
                         <TextBlock Text="DEATH PENALTY" Style="{StaticResource FieldLabelStyle}" />
-                        <Border Style="{StaticResource InfoIconStyle}"
-                                ToolTip="What you lose on death - skills, inventory, equipped gear. Hardcore is the harshest, Casual the most forgiving.">
+                        <Border Style="{StaticResource InfoIconStyle}">
                             <TextBlock Style="{StaticResource InfoIconTextStyle}" />
                         </Border>
                     </StackPanel>
@@ -108,10 +103,13 @@
                 </StackPanel>
 
                 <StackPanel Grid.Row="2" Grid.Column="0">
-                    <StackPanel Orientation="Horizontal">
+                    <StackPanel Orientation="Horizontal" Style="{StaticResource TooltipRowStyle}">
+                        <StackPanel.ToolTip>
+                            <TextBlock MaxWidth="240" TextWrapping="Wrap"
+                                       Text="How much loot and crafting material you gather from the world. Much More increases drops, Much Less reduces them." />
+                        </StackPanel.ToolTip>
                         <TextBlock Text="RESOURCES" Style="{StaticResource FieldLabelStyle}" />
-                        <Border Style="{StaticResource InfoIconStyle}"
-                                ToolTip="How much loot and crafting material you gather from the world. Much More increases drops, Much Less reduces them.">
+                        <Border Style="{StaticResource InfoIconStyle}">
                             <TextBlock Style="{StaticResource InfoIconTextStyle}" />
                         </Border>
                     </StackPanel>
@@ -124,10 +122,13 @@
                     </ComboBox>
                 </StackPanel>
                 <StackPanel Grid.Row="2" Grid.Column="2">
-                    <StackPanel Orientation="Horizontal">
+                    <StackPanel Orientation="Horizontal" Style="{StaticResource TooltipRowStyle}">
+                        <StackPanel.ToolTip>
+                            <TextBlock MaxWidth="240" TextWrapping="Wrap"
+                                       Text="How often enemies raid your base. None turns raids off entirely; Much More makes them frequent." />
+                        </StackPanel.ToolTip>
                         <TextBlock Text="RAIDS" Style="{StaticResource FieldLabelStyle}" />
-                        <Border Style="{StaticResource InfoIconStyle}"
-                                ToolTip="How often enemies raid your base. None turns raids off entirely; Much More makes them frequent.">
+                        <Border Style="{StaticResource InfoIconStyle}">
                             <TextBlock Style="{StaticResource InfoIconTextStyle}" />
                         </Border>
                     </StackPanel>
@@ -142,10 +143,13 @@
                 </StackPanel>
             </Grid>
 
-            <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+            <StackPanel Orientation="Horizontal" Style="{StaticResource TooltipRowStyle}" Margin="0,14,0,0">
+                <StackPanel.ToolTip>
+                    <TextBlock MaxWidth="280" TextWrapping="Wrap"
+                               Text="What you're allowed to carry through portals. Casual allows everything (including ore); Very Hard blocks the most." />
+                </StackPanel.ToolTip>
                 <TextBlock Text="PORTALS" Style="{StaticResource FieldLabelStyle}" />
-                <Border Style="{StaticResource InfoIconStyle}"
-                        ToolTip="What you're allowed to carry through portals. Casual allows everything (including ore); Very Hard blocks the most.">
+                <Border Style="{StaticResource InfoIconStyle}">
                     <TextBlock Style="{StaticResource InfoIconTextStyle}" />
                 </Border>
             </StackPanel>
@@ -163,10 +167,13 @@
             <Border Background="{StaticResource BgTitleBrush}" BorderBrush="{StaticResource BorderMutedBrush}"
                     BorderThickness="1" Padding="12,10" Margin="0,0,0,8">
                 <Grid>
-                    <StackPanel Orientation="Horizontal">
+                    <StackPanel Orientation="Horizontal" Style="{StaticResource TooltipRowStyle}">
+                        <StackPanel.ToolTip>
+                            <TextBlock MaxWidth="240" TextWrapping="Wrap"
+                                       Text="Disables the in-game map entirely - you navigate by landmarks and memory only." />
+                        </StackPanel.ToolTip>
                         <TextBlock Text="No map" VerticalAlignment="Center" />
-                        <Border Style="{StaticResource InfoIconStyle}"
-                                ToolTip="Disables the in-game map entirely - you navigate by landmarks and memory only.">
+                        <Border Style="{StaticResource InfoIconStyle}">
                             <TextBlock Style="{StaticResource InfoIconTextStyle}" />
                         </Border>
                     </StackPanel>
@@ -176,10 +183,13 @@
             <Border Background="{StaticResource BgTitleBrush}" BorderBrush="{StaticResource BorderMutedBrush}"
                     BorderThickness="1" Padding="12,10" Margin="0,0,0,8">
                 <Grid>
-                    <StackPanel Orientation="Horizontal">
+                    <StackPanel Orientation="Horizontal" Style="{StaticResource TooltipRowStyle}">
+                        <StackPanel.ToolTip>
+                            <TextBlock MaxWidth="240" TextWrapping="Wrap"
+                                       Text="Random world events (like raids) only start when players are nearby, instead of anywhere in the world." />
+                        </StackPanel.ToolTip>
                         <TextBlock Text="Events only trigger near players" VerticalAlignment="Center" />
-                        <Border Style="{StaticResource InfoIconStyle}"
-                                ToolTip="Random world events (like raids) only start when players are nearby, instead of anywhere in the world.">
+                        <Border Style="{StaticResource InfoIconStyle}">
                             <TextBlock Style="{StaticResource InfoIconTextStyle}" />
                         </Border>
                     </StackPanel>
@@ -189,10 +199,13 @@
             <Border Background="{StaticResource BgTitleBrush}" BorderBrush="{StaticResource BorderMutedBrush}"
                     BorderThickness="1" Padding="12,10" Margin="0,0,0,8">
                 <Grid>
-                    <StackPanel Orientation="Horizontal">
+                    <StackPanel Orientation="Horizontal" Style="{StaticResource TooltipRowStyle}">
+                        <StackPanel.ToolTip>
+                            <TextBlock MaxWidth="240" TextWrapping="Wrap"
+                                       Text="Creatures won't attack unless you provoke them first." />
+                        </StackPanel.ToolTip>
                         <TextBlock Text="Passive mobs" VerticalAlignment="Center" />
-                        <Border Style="{StaticResource InfoIconStyle}"
-                                ToolTip="Creatures won't attack unless you provoke them first.">
+                        <Border Style="{StaticResource InfoIconStyle}">
                             <TextBlock Style="{StaticResource InfoIconTextStyle}" />
                         </Border>
                     </StackPanel>
@@ -202,10 +215,13 @@
             <Border Background="{StaticResource BgTitleBrush}" BorderBrush="{StaticResource BorderMutedBrush}"
                     BorderThickness="1" Padding="12,10" Margin="0,0,18,0">
                 <Grid>
-                    <StackPanel Orientation="Horizontal">
+                    <StackPanel Orientation="Horizontal" Style="{StaticResource TooltipRowStyle}">
+                        <StackPanel.ToolTip>
+                            <TextBlock MaxWidth="240" TextWrapping="Wrap"
+                                       Text="Building and crafting require no materials - creative/sandbox mode." />
+                        </StackPanel.ToolTip>
                         <TextBlock Text="No build cost" VerticalAlignment="Center" />
-                        <Border Style="{StaticResource InfoIconStyle}"
-                                ToolTip="Building and crafting require no materials - creative/sandbox mode.">
+                        <Border Style="{StaticResource InfoIconStyle}">
                             <TextBlock Style="{StaticResource InfoIconTextStyle}" />
                         </Border>
                     </StackPanel>

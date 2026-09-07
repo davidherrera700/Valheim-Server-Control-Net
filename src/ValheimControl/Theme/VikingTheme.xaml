@@ -71,7 +71,7 @@
     <DrawingBrush x:Key="ChevronBandBrush" TileMode="Tile" Viewport="0,0,16,4"
                   ViewportUnits="Absolute" Stretch="None" Opacity="0.28">
         <DrawingBrush.Drawing>
-            <GeometryDrawing Brush="{StaticResource AccentGoldBrush}">
+            <GeometryDrawing Brush="{DynamicResource AccentGoldBrush}">
                 <GeometryDrawing.Geometry>
                     <RectangleGeometry Rect="0,0,8,4" />
                 </GeometryDrawing.Geometry>
@@ -98,7 +98,7 @@
     <Style x:Key="AppMarkStyle" TargetType="Rectangle">
         <Setter Property="Width" Value="22" />
         <Setter Property="Height" Value="22" />
-        <Setter Property="Fill" Value="{StaticResource AccentGoldBrush}" />
+        <Setter Property="Fill" Value="{DynamicResource AccentGoldBrush}" />
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="OpacityMask">
             <Setter.Value>
@@ -111,7 +111,7 @@
     <Style x:Key="SectionAxeStyle" TargetType="Rectangle">
         <Setter Property="Width" Value="16" />
         <Setter Property="Height" Value="16" />
-        <Setter Property="Fill" Value="{StaticResource AccentGoldBrush}" />
+        <Setter Property="Fill" Value="{DynamicResource AccentGoldBrush}" />
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="Margin" Value="0,0,10,0" />
         <Setter Property="OpacityMask">
@@ -140,7 +140,7 @@
     <Style x:Key="DiamondMarkerStyle" TargetType="Rectangle">
         <Setter Property="Width" Value="6" />
         <Setter Property="Height" Value="6" />
-        <Setter Property="Fill" Value="{StaticResource AccentGoldBrush}" />
+        <Setter Property="Fill" Value="{DynamicResource AccentGoldBrush}" />
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
         <Setter Property="RenderTransform">
@@ -153,7 +153,7 @@
     <!-- Divider line. Usage: <Border Style="{StaticResource DividerStyle}" /> -->
     <Style x:Key="DividerStyle" TargetType="Border">
         <Setter Property="Height" Value="1" />
-        <Setter Property="Background" Value="{StaticResource RuneDividerBrush}" />
+        <Setter Property="Background" Value="{DynamicResource RuneDividerBrush}" />
         <Setter Property="Margin" Value="0,10,0,14" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
     </Style>
@@ -183,7 +183,7 @@
         <Setter Property="FontFamily" Value="{StaticResource TitleFont}" />
         <Setter Property="FontWeight" Value="Bold" />
         <Setter Property="FontSize" Value="20" />
-        <Setter Property="Foreground" Value="{StaticResource AccentGoldBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentGoldBrush}" />
         <Setter Property="TextOptions.TextRenderingMode" Value="ClearType" />
     </Style>
 
@@ -192,7 +192,7 @@
         <Setter Property="FontFamily" Value="{StaticResource TitleFont}" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="FontSize" Value="14" />
-        <Setter Property="Foreground" Value="{StaticResource AccentGoldBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentGoldBrush}" />
     </Style>
 
     <Style x:Key="DangerHeaderStyle" TargetType="TextBlock" BasedOn="{StaticResource SectionHeaderStyle}">
@@ -245,7 +245,7 @@
                             CornerRadius="1" Margin="3,0" />
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="ThumbBorder" Property="Background" Value="{StaticResource AccentGoldBrush}" />
+                            <Setter TargetName="ThumbBorder" Property="Background" Value="{DynamicResource AccentGoldBrush}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -342,11 +342,11 @@
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="ButtonBorder" Property="Background" Value="{StaticResource BgPanelHoverBrush}" />
-                            <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{StaticResource AccentGoldBrightBrush}" />
+                            <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{DynamicResource AccentGoldBrightBrush}" />
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="ButtonBorder" Property="Background" Value="{StaticResource AccentGoldBrush}" />
-                            <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{StaticResource AccentGoldBrightBrush}" />
+                            <Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource AccentGoldBrush}" />
+                            <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{DynamicResource AccentGoldBrightBrush}" />
                             <Setter Property="Foreground" Value="{StaticResource BgDarkBrush}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
@@ -361,13 +361,13 @@
 
     <!-- Gold-edged: the two primary run actions (Start, Restart). -->
     <Style x:Key="AccentButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-        <Setter Property="BorderBrush" Value="{StaticResource AccentGoldBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentGoldBrush}" />
     </Style>
 
     <!-- Solid gold: one per window maximum (Save, Continue). -->
     <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-        <Setter Property="Background" Value="{StaticResource AccentGoldBrush}" />
-        <Setter Property="BorderBrush" Value="{StaticResource AccentGoldBrightBrush}" />
+        <Setter Property="Background" Value="{DynamicResource AccentGoldBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentGoldBrightBrush}" />
         <Setter Property="Foreground" Value="{StaticResource BgDarkBrush}" />
         <Setter Property="FontWeight" Value="Bold" />
         <Setter Property="Padding" Value="24,11" />
@@ -403,15 +403,15 @@
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
         <Setter Property="BorderBrush" Value="{StaticResource BorderMutedBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CaretBrush" Value="{StaticResource AccentGoldBrush}" />
-        <Setter Property="SelectionBrush" Value="{StaticResource AccentGoldBrush}" />
+        <Setter Property="CaretBrush" Value="{DynamicResource AccentGoldBrush}" />
+        <Setter Property="SelectionBrush" Value="{DynamicResource AccentGoldBrush}" />
         <Setter Property="Padding" Value="10,9" />
         <Setter Property="FontFamily" Value="{StaticResource BodyFont}" />
         <Setter Property="FontSize" Value="13" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Style.Triggers>
             <Trigger Property="IsKeyboardFocused" Value="True">
-                <Setter Property="BorderBrush" Value="{StaticResource AccentGoldBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource AccentGoldBrush}" />
             </Trigger>
             <Trigger Property="IsReadOnly" Value="True">
                 <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
@@ -430,13 +430,13 @@
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
         <Setter Property="BorderBrush" Value="{StaticResource BorderMutedBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CaretBrush" Value="{StaticResource AccentGoldBrush}" />
+        <Setter Property="CaretBrush" Value="{DynamicResource AccentGoldBrush}" />
         <Setter Property="Padding" Value="10,9" />
         <Setter Property="FontFamily" Value="{StaticResource BodyFont}" />
         <Setter Property="FontSize" Value="13" />
         <Style.Triggers>
             <Trigger Property="IsKeyboardFocused" Value="True">
-                <Setter Property="BorderBrush" Value="{StaticResource AccentGoldBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource AccentGoldBrush}" />
             </Trigger>
         </Style.Triggers>
     </Style>
@@ -453,7 +453,7 @@
         <Setter Property="IsReadOnly" Value="True" />
         <Setter Property="TextWrapping" Value="Wrap" />
         <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
-        <Setter Property="SelectionBrush" Value="{StaticResource AccentGoldBrush}" />
+        <Setter Property="SelectionBrush" Value="{DynamicResource AccentGoldBrush}" />
     </Style>
 
     <!-- ===================== Toggle switch ===================== -->
@@ -473,7 +473,7 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="SwitchTrack" Property="Background" Value="{StaticResource AccentGoldBrush}" />
+                            <Setter TargetName="SwitchTrack" Property="Background" Value="{DynamicResource AccentGoldBrush}" />
                             <Setter TargetName="SwitchKnob" Property="HorizontalAlignment" Value="Right" />
                             <Setter TargetName="SwitchKnob" Property="Background" Value="{StaticResource BgDarkBrush}" />
                         </Trigger>
@@ -508,7 +508,7 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsSelected" Value="True">
-                            <Setter TargetName="TabBorder" Property="BorderBrush" Value="{StaticResource AccentGoldBrush}" />
+                            <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource AccentGoldBrush}" />
                             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -546,7 +546,7 @@
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
                             <Setter TargetName="RowBorder" Property="Background" Value="{StaticResource BgPanelBrush}" />
-                            <Setter TargetName="RowBorder" Property="BorderBrush" Value="{StaticResource AccentGoldBrush}" />
+                            <Setter TargetName="RowBorder" Property="BorderBrush" Value="{DynamicResource AccentGoldBrush}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -583,7 +583,7 @@
                                             CornerRadius="2" />
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="ToggleBorder" Property="BorderBrush" Value="{StaticResource AccentGoldBrightBrush}" />
+                                            <Setter TargetName="ToggleBorder" Property="BorderBrush" Value="{DynamicResource AccentGoldBrightBrush}" />
                                         </Trigger>
                                     </ControlTemplate.Triggers>
                                 </ControlTemplate>
@@ -600,7 +600,7 @@
                                           HorizontalAlignment="Left" />
 
                         <TextBlock Text="&#9662;"
-                                   Foreground="{StaticResource AccentGoldBrush}"
+                                   Foreground="{DynamicResource AccentGoldBrush}"
                                    VerticalAlignment="Center"
                                    HorizontalAlignment="Right"
                                    Margin="0,0,10,0"
@@ -613,7 +613,7 @@
                                Focusable="False"
                                PopupAnimation="Slide">
                             <Border Background="{StaticResource BgPanelBrush}"
-                                    BorderBrush="{StaticResource AccentGoldBrush}"
+                                    BorderBrush="{DynamicResource AccentGoldBrush}"
                                     BorderThickness="1"
                                     MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
                                     MaxHeight="240"
@@ -652,7 +652,7 @@
                             <Setter TargetName="ItemBorder" Property="Background" Value="{StaticResource BgPanelHoverBrush}" />
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
-                            <Setter TargetName="ItemBorder" Property="Background" Value="{StaticResource AccentGoldBrush}" />
+                            <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource AccentGoldBrush}" />
                             <Setter Property="Foreground" Value="{StaticResource BgDarkBrush}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -665,7 +665,7 @@
     <Style TargetType="ProgressBar">
         <Setter Property="Height" Value="4" />
         <Setter Property="Background" Value="{StaticResource BorderFaintBrush}" />
-        <Setter Property="Foreground" Value="{StaticResource AccentGoldBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentGoldBrush}" />
         <Setter Property="BorderThickness" Value="0" />
     </Style>
 
@@ -678,10 +678,30 @@
     <Style TargetType="ToolTip">
         <Setter Property="Background" Value="{StaticResource BgPanelBrush}" />
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-        <Setter Property="BorderBrush" Value="{StaticResource AccentGoldBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentGoldBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Padding" Value="10,7" />
         <Setter Property="FontSize" Value="12" />
+    </Style>
+
+    <!-- ===================== Info icon (small "?" with a tooltip) ===================== -->
+    <Style x:Key="InfoIconStyle" TargetType="Border">
+        <Setter Property="Width" Value="15" />
+        <Setter Property="Height" Value="15" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="BorderBrush" Value="{StaticResource TextMutedBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Cursor" Value="Help" />
+        <Setter Property="Margin" Value="6,0,0,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style x:Key="InfoIconTextStyle" TargetType="TextBlock">
+        <Setter Property="Text" Value="?" />
+        <Setter Property="FontSize" Value="10" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
 </ResourceDictionary>

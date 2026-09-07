@@ -238,4 +238,27 @@ public class SshService
     /// </summary>
     public async Task<SshCommandResult> RunServerUpdateAsync() =>
         await RunCommandAsync("sudo /opt/valheim/update.sh", timeoutSeconds: 300);
+
+    /// <summary>Current recent-backup retention (minutes), daily retention (days), and interval.</summary>
+    public async Task<SshCommandResult> GetBackupSettingsAsync() =>
+        await RunCommandAsync("sudo /opt/valheim/get_backup_settings.sh");
+
+    /// <summary>Updates how long recent (minutes) and daily (days) backups are kept.</summary>
+    public async Task<SshCommandResult> SetBackupRetentionAsync(int recentMinutes, int dailyDays) =>
+        await RunCommandAsync($"sudo /opt/valheim/set_backup_retention.sh {recentMinutes} {dailyDays}");
+
+    /// <summary>
+    /// Updates how often backups run. Applies immediately (daemon-reload +
+    /// timer restart happens server-side as part of the same script).
+    /// </summary>
+    public async Task<SshCommandResult> SetBackupIntervalAsync(string systemdInterval) =>
+        await RunCommandAsync($"sudo /opt/valheim/set_backup_interval.sh {systemdInterval}");
+
+    /// <summary>
+    /// Reads /opt/valheim/app_version.txt - the server's declared required
+    /// app version, checked on every launch. Output is key=value lines:
+    /// RequiredVersion (always present), and optionally ReleaseNotes/DownloadUrl.
+    /// </summary>
+    public async Task<SshCommandResult> GetAppVersionInfoAsync() =>
+        await RunCommandAsync("sudo /opt/valheim/get_app_version.sh");
 }

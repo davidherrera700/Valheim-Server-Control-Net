@@ -5,34 +5,6 @@ across sessions.
 
 ## Open
 
-### Settings window
-Held over from the original Phase 2 plan - app-wide preferences window.
-Scope agreed so far:
-- Polling interval (currently hardcoded 30s in MainWindow)
-- Guardrails: confirm-before-destructive (partially already built via
-  MessageBox confirms on Stop/Backup+Reboot), "block stop while players
-  online" (best-effort only - we can't reliably know who's currently
-  connected, only who's *joined* since last restart)
-- Accent color swatches (cosmetic theme swap)
-- Retention settings for *our own* systemd backup script (frequent/daily
-  counts) - NOT Valheim's native `-backups`/`-backupshort`/`-backuplong`
-  flags, which would be a second, redundant backup system running
-  alongside the one we already have
-
-### Flesh out the Files page (Runestones)
-`adminlist.txt`, `permittedlist.txt`, and `bannedlist.txt` are currently
-just raw text boxes with placeholder comments. Worth a friendlier,
-structured editor instead of raw text:
-- One row per Steam ID, with an "Add" field and a delete button per row,
-  rather than hand-editing lines in a text box
-- Possibly a name/nickname column next to each ID, stored as a comment on
-  the same line (Valheim itself ignores anything after the ID, so this is
-  safe) so the list is actually readable months later
-- Consider whether to pull Steam IDs automatically from recent Saga Log /
-  journal join events (we already parse "Got character ZDOID from ...",
-  though that gives names, not IDs - the log format for the SteamID64
-  itself would need separate verification before relying on it)
-
 ### User roles & permissions
 Bigger one - flagged for careful design before building, not a quick add.
 
@@ -76,52 +48,57 @@ profile-picker screen, (4) wire permission checks into every existing
 action, (5) build the Owner-only management UI last, once the
 enforcement plumbing is proven.
 
-### Enforced app updates
-When you push an official update to the project, every PC should be
-required to update before continuing to use the app - not just a
-"new version available" nag.
+### Silent delta-based auto-updates (Velopack)
+Follow-up to the enforced-update system already shipped (see Done below).
+Right now, an outdated PC gets *blocked* with a screen linking to GitHub -
+the person still has to manually download and replace the .exe themselves.
+This item is about making that step automatic and only transferring
+what actually changed between versions, instead of the whole app.
 
-**Why this matters beyond convenience:** the server-side scripts
-(`read_config.sh`, `write_config.sh`, `delete_world.sh`, etc.) are now
-shared infrastructure across all 4 PCs. If one PC is running an older
-version of the app that assumes a different script contract (missing a
-script, different expected arguments), it could fail confusingly or, worse,
-do something unintended. Forcing everyone onto the same version keeps the
-client/server contract consistent.
+**The tool:** [Velopack](https://velopack.io) (actively maintained
+successor to Squirrel.Windows). Confirmed via research, not just recalled
+from training data:
+- Generates real binary delta patches between versions - users only
+  download the changed bytes, not a full reinstall
+- Has built-in support for GitHub Releases as the update source
+  (`GithubSource` in `UpdateManager`), fitting the release workflow
+  already in use
+- Handles the "a running .exe can't overwrite itself" problem internally -
+  no need to hand-roll a separate updater helper process
+- Written in Rust internally, exposed as a normal C# NuGet package
 
-**Design decisions to make before building:**
-- **Where "latest required version" lives:** querying GitHub's API directly
-  runs into trouble if the repo is private (needs auth) and adds a new
-  external dependency. Simpler and more consistent with how we already
-  handle shared state (e.g. the delete password): store a small version
-  file on the Ubuntu server itself (e.g. `/opt/valheim/app_version.txt`,
-  containing the required version number, release notes, and a link),
-  updated manually whenever you cut an official release. The app then
-  checks it over the SSH connection it already has, rather than adding a
-  second trust relationship with GitHub.
-- **How the app knows its own version:** needs a version constant embedded
-  at build time (simple - e.g. an `AppVersion` constant bumped each
-  release, or wired to the assembly version).
-- **Hard block vs. soft nag:** given the shared-script-compatibility
-  reasoning above, this should probably be a real block - a modal "Update
-  Required" screen shown before the main window loads, not a dismissible
-  banner - but only once a mismatch is *confirmed*. If the version check
-  itself fails (server unreachable, etc.), the app should fail open and let
-  you in rather than lock you out over a network hiccup.
-- **Getting the actual update onto each PC:** this app isn't distributed
-  through anything auto-update-capable (no MSIX/Squirrel/ClickOnce) - it's
-  a manually-published folder per PC. Realistic first version: the "Update
-  Required" screen links to the GitHub release/repo with instructions,
-  rather than attempting to download and hot-swap the running .exe (doable
-  later via a small separate updater process, but real added complexity -
-  not worth it for a 4-PC home tool unless it becomes annoying to do
-  manually).
-- **Publishing flow for you:** bump the version constant, update the
-  server-side version file, and ideally cut an actual GitHub Release with
-  the built `.exe` attached so there's somewhere concrete to point people.
+**What integrating it actually involves (this is a real pipeline change,
+not a small addition):**
+1. Add the `velopack` NuGet package
+2. Add `VelopackApp.Build().Run()` as the literal first line of the app's
+   startup, before anything else executes
+3. Replace the current `dotnet publish` release step with Velopack's own
+   `vpk` CLI, which packages build output into its release format
+4. Each GitHub Release needs Velopack's structure (one full package + one
+   delta patch per release) - can't just attach a bare `.exe` as a release
+   asset the way the current manual process does
+5. Add `UpdateManager.CheckForUpdatesAsync()` / `DownloadUpdatesAsync()`
+   calls in the app
+
+**Relationship to what's already built:** this would largely *replace*
+the current mechanism (`AppVersion.cs`, `app_version.txt` on the server,
+`AppUpdateRequiredWindow`) as the primary path - Velopack would update
+people silently in the background, and the existing hard-block screen
+would become more of a rare safety net (for a PC that somehow missed a
+silent update) than the main line of defense.
+
+**Decided:** hold off until the app's feature set is mostly settled, then
+revisit - see how much friction the current manual-update-required flow
+actually causes in practice first before taking on a real packaging
+pipeline change.
 
 ## Done
 (See conversation history for full detail on everything already shipped:
-theme, Phase 2 stats, Tailscale remote access, Runestones config editor,
-Swap/Create/Delete World with shared server-side delete password, Update
-tab + auto-update, World Modifiers popup.)
+theme, Phase 2 stats, Tailscale remote access, Runestones config editor
+with structured adminlist/permittedlist/bannedlist editing, Swap/Create/
+Delete World with shared server-side delete password, World Modifiers
+popup, Settings window (polling interval, guardrails, accent color, real
+backup retention controls), Update tab + auto-update, and enforced app
+updates - a version check on launch that blocks an outdated PC with a
+screen linking to the latest release, backed by a small version file on
+the server.)

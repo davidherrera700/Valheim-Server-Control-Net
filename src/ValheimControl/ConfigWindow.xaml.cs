@@ -28,16 +28,44 @@ public partial class ConfigWindow : Window
         Loaded += ConfigWindow_Loaded;
     }
 
+    private static readonly Dictionary<string, string> FileDescriptions = new()
+    {
+        ["start_server.sh"] = "Launch settings & world modifiers",
+        ["adminlist.txt"] = "Admin permissions",
+        ["permittedlist.txt"] = "Whitelist",
+        ["bannedlist.txt"] = "Blocklist",
+    };
+
     private async void ConfigWindow_Loaded(object sender, RoutedEventArgs e)
     {
         foreach (var file in SshService.AllowedConfigFiles)
         {
+            var row = new StackPanel();
+            row.Children.Add(new TextBlock { Text = file });
+
+            if (FileDescriptions.TryGetValue(file, out var subtitle))
+            {
+                row.Children.Add(new TextBlock
+                {
+                    Text = subtitle,
+                    Style = (Style)FindResource("SubtitleTextStyle"),
+                    FontSize = 10,
+                    Foreground = (System.Windows.Media.Brush)FindResource("TextMutedBrush"),
+                    Margin = new Thickness(0, 2, 0, 0)
+                });
+            }
+
             FileList.Items.Add(new ListBoxItem
             {
-                Content = file,
+                Content = row,
                 Padding = new Thickness(16, 11, 16, 11),
                 Tag = file
             });
+        }
+
+        if (FileList.Items.Count > 0)
+        {
+            FileList.SelectedIndex = 0; // triggers FileList_SelectionChanged, loading it automatically
         }
 
         await LoadWorldPickerAsync();
@@ -277,25 +305,17 @@ public partial class ConfigWindow : Window
         _currentContent = _originalContent;
 
         var isStartServer = filename == StartServerFile;
-        ViewSwitchPanel.Visibility = isStartServer ? Visibility.Visible : Visibility.Collapsed;
-        FormFieldsPanel.Visibility = Visibility.Collapsed;
-        RawViewPanel.Visibility = Visibility.Visible;
-        _formView = false;
-
-        if (isStartServer)
-        {
-            // Default to Form view for the launch script - friendlier for the
-            // common edits (name/world/port/password/public/crossplay).
-            ShowFormView();
-        }
-
+        ViewSwitchPanel.Visibility = Visibility.Visible;
         RawViewLabel.Text = isStartServer ? "RAW LAUNCH SCRIPT" : "RAW FILE CONTENT";
         FileMeta.Text = "Loaded from server";
 
         _suppressChangeEvents = true;
         RawBox.Text = _currentContent;
-        if (isStartServer) PopulateFormFields(_currentContent);
         _suppressChangeEvents = false;
+
+        // Default to Form view for every file - the launch script gets the
+        // field-based editor, the three list files get the entry editor.
+        ShowFormView();
 
         UpdateDirtyState();
     }
@@ -310,14 +330,24 @@ public partial class ConfigWindow : Window
 
     private void ShowFormView()
     {
-        if (_selectedFile != StartServerFile) return;
-
         _suppressChangeEvents = true;
-        PopulateFormFields(_currentContent);
+
+        if (_selectedFile == StartServerFile)
+        {
+            PopulateFormFields(_currentContent);
+            FormFieldsPanel.Visibility = Visibility.Visible;
+            ListEditorPanel.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            PopulateListEditor(_currentContent);
+            FormFieldsPanel.Visibility = Visibility.Collapsed;
+            ListEditorPanel.Visibility = Visibility.Visible;
+        }
+
         _suppressChangeEvents = false;
 
         _formView = true;
-        FormFieldsPanel.Visibility = Visibility.Visible;
         RawViewPanel.Visibility = Visibility.Collapsed;
         FormViewButton.BorderBrush = (System.Windows.Media.Brush)FindResource("AccentGoldBrush");
         RawViewButton.ClearValue(Button.BorderBrushProperty);
@@ -331,6 +361,7 @@ public partial class ConfigWindow : Window
 
         _formView = false;
         FormFieldsPanel.Visibility = Visibility.Collapsed;
+        ListEditorPanel.Visibility = Visibility.Collapsed;
         RawViewPanel.Visibility = Visibility.Visible;
         RawViewButton.BorderBrush = (System.Windows.Media.Brush)FindResource("AccentGoldBrush");
         FormViewButton.ClearValue(Button.BorderBrushProperty);
@@ -344,6 +375,79 @@ public partial class ConfigWindow : Window
         WorldPasswordBox.Text = LaunchLineParser.GetQuotedValue(content, "password") ?? "";
         PublicToggle.IsChecked = LaunchLineParser.GetBareValue(content, "public") == "1";
         CrossplayToggle.IsChecked = LaunchLineParser.GetCrossplayEnabled(content);
+    }
+
+    // ------------------------------------------------------------------
+    // List editor (adminlist.txt / permittedlist.txt / bannedlist.txt)
+    // ------------------------------------------------------------------
+
+    private List<string> _listComments = new();
+
+    private void PopulateListEditor(string content)
+    {
+        var (comments, entries) = ListFileParser.Parse(content);
+        _listComments = comments;
+
+        ListEntriesPanel.Children.Clear();
+        foreach (var entry in entries)
+        {
+            AddListEntryRow(entry);
+        }
+    }
+
+    private void AddListEntryRow(string idValue)
+    {
+        var row = new Grid { Margin = new Thickness(0, 0, 0, 8) };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var box = new TextBox { Text = idValue, Margin = new Thickness(0, 0, 8, 0) };
+        box.TextChanged += (_, _) =>
+        {
+            if (_suppressChangeEvents || !_formView) return;
+            ApplyListEditorToContent();
+            UpdateDirtyState();
+        };
+        Grid.SetColumn(box, 0);
+
+        var removeButton = new Button
+        {
+            Content = "REMOVE",
+            Style = (Style)FindResource("GhostButtonStyle"),
+            Padding = new Thickness(10, 6, 10, 6)
+        };
+        Grid.SetColumn(removeButton, 1);
+        removeButton.Click += (_, _) =>
+        {
+            ListEntriesPanel.Children.Remove(row);
+            ApplyListEditorToContent();
+            UpdateDirtyState();
+        };
+
+        row.Children.Add(box);
+        row.Children.Add(removeButton);
+        ListEntriesPanel.Children.Add(row);
+    }
+
+    private void AddEntryButton_Click(object sender, RoutedEventArgs e)
+    {
+        AddListEntryRow("");
+        UpdateDirtyState();
+    }
+
+    private void ApplyListEditorToContent()
+    {
+        var entries = new List<string>();
+        foreach (var child in ListEntriesPanel.Children)
+        {
+            if (child is Grid row && row.Children.Count > 0 && row.Children[0] is TextBox box)
+            {
+                var value = box.Text.Trim();
+                if (!string.IsNullOrWhiteSpace(value)) entries.Add(value);
+            }
+        }
+
+        _currentContent = ListFileParser.Build(_listComments, entries);
     }
 
     private void ApplyFormFieldsToContent()
@@ -405,7 +509,11 @@ public partial class ConfigWindow : Window
     {
         if (_selectedFile is null) return;
 
-        if (_formView) ApplyFormFieldsToContent();
+        if (_formView)
+        {
+            if (_selectedFile == StartServerFile) ApplyFormFieldsToContent();
+            else ApplyListEditorToContent();
+        }
 
         var isStartServer = _selectedFile == StartServerFile;
         var worldChanged = isStartServer &&
@@ -589,6 +697,7 @@ public partial class ConfigWindow : Window
         _suppressChangeEvents = true;
         RawBox.Text = _currentContent;
         if (_selectedFile == StartServerFile) PopulateFormFields(_currentContent);
+        else PopulateListEditor(_currentContent);
         _suppressChangeEvents = false;
 
         UpdateDirtyState();

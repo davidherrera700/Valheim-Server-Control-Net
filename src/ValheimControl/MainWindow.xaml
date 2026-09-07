@@ -47,7 +47,10 @@
                                 Margin="0,0,10,0" Click="RunestonesButton_Click" />
                         <Button x:Name="UpdateWindowButton" Content="UPDATE"
                                 Style="{StaticResource ChipButtonStyle}"
-                                Margin="0,0,14,0" Click="UpdateWindowButton_Click" />
+                                Margin="0,0,10,0" Click="UpdateWindowButton_Click" />
+                        <Button x:Name="SettingsWindowButton" Content="SETTINGS"
+                                Style="{StaticResource ChipButtonStyle}"
+                                Margin="0,0,14,0" Click="SettingsWindowButton_Click" />
                         <TextBlock x:Name="HostLabel"
                                    Text=""
                                    Style="{StaticResource MonoTextStyle}"
@@ -102,10 +105,15 @@
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
-                            <!-- Placeholder - Valheim doesn't expose this without a new backend query; see HANDOFF follow-up -->
+                            <!-- Live - queried from the server -->
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="World" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,11" />
-                            <TextBlock Grid.Row="0" Grid.Column="1" x:Name="WorldValue" Text="—" Style="{StaticResource StatValueStyle}"
-                                       Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,11" />
+                            <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,11">
+                                <TextBlock x:Name="WorldValue" Text="—" Style="{StaticResource StatValueStyle}"
+                                           Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
+                                <Button x:Name="SwapWorldQuickButton" Content="SWAP" Style="{StaticResource ChipButtonStyle}"
+                                        FontSize="9" Padding="8,3" Margin="8,0,0,0"
+                                        ToolTip="Quick-swap to another world" Click="SwapWorldQuickButton_Click" />
+                            </StackPanel>
 
                             <!-- Placeholder - Valheim doesn't expose this without a new backend query; see HANDOFF follow-up -->
                             <TextBlock Grid.Row="1" Grid.Column="0" Text="Uptime" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,11" />
@@ -119,7 +127,7 @@
                             <!-- Live - counts down to the real 30s auto status poll -->
                             <TextBlock Grid.Row="3" Grid.Column="0" Text="Next auto-refresh" Foreground="{StaticResource TextSecondaryBrush}" />
                             <TextBlock Grid.Row="3" Grid.Column="1" x:Name="RefreshCountdown" Text="00:30"
-                                       Style="{StaticResource MonoTextStyle}" Foreground="{StaticResource AccentGoldBrush}" />
+                                       Style="{StaticResource MonoTextStyle}" Foreground="{DynamicResource AccentGoldBrush}" />
                         </Grid>
                     </StackPanel>
                 </Border>

@@ -96,7 +96,7 @@
                         <Button x:Name="FormViewButton" Content="FORM" Style="{StaticResource ChipButtonStyle}"
                                 Background="Transparent" Margin="0,0,8,0" Click="FormViewButton_Click" />
                         <Button x:Name="RawViewButton" Content="RAW" Style="{StaticResource ChipButtonStyle}"
-                                BorderBrush="{StaticResource AccentGoldBrush}" Click="RawViewButton_Click" />
+                                BorderBrush="{DynamicResource AccentGoldBrush}" Click="RawViewButton_Click" />
                     </StackPanel>
                 </Grid>
 
@@ -155,7 +155,7 @@
                             <TextBox x:Name="NewWorldNameBox" Grid.Column="0" />
                             <Button x:Name="CreateWorldButton" Grid.Column="1" Content="CREATE"
                                     Style="{StaticResource ChipButtonStyle}"
-                                    BorderBrush="{StaticResource AccentGoldBrush}"
+                                    BorderBrush="{DynamicResource AccentGoldBrush}"
                                     Margin="8,0,0,0" Click="CreateWorldButton_Click" />
                         </Grid>
 
@@ -190,6 +190,25 @@
                         </Grid>
                     </Border>
                 </Grid>
+
+                <!-- List editor (adminlist.txt / permittedlist.txt / bannedlist.txt) -->
+                <DockPanel x:Name="ListEditorPanel" Grid.Row="1" Grid.RowSpan="2"
+                           Margin="22,18,22,18" Visibility="Collapsed">
+                    <TextBlock DockPanel.Dock="Top" Text="ONE STEAM64 ID PER ENTRY"
+                               Style="{StaticResource FieldLabelStyle}" Margin="0,0,0,10" />
+                    <StackPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+                        <Button x:Name="AddEntryButton" Content="+ ADD STEAM ID"
+                                Style="{StaticResource ChipButtonStyle}"
+                                BorderBrush="{DynamicResource AccentGoldBrush}"
+                                HorizontalAlignment="Left" Click="AddEntryButton_Click" />
+                        <TextBlock Text="Find a player's Steam64 ID from their Steam profile URL, or in-game via the F2 panel."
+                                   Style="{StaticResource SubtitleTextStyle}" FontSize="10"
+                                   Foreground="{StaticResource TextMutedBrush}" Margin="0,8,0,0" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel x:Name="ListEntriesPanel" />
+                    </ScrollViewer>
+                </DockPanel>
 
                 <!-- Raw text view -->
                 <DockPanel x:Name="RawViewPanel" Grid.Row="1" Grid.RowSpan="2" Margin="22,18,22,18">

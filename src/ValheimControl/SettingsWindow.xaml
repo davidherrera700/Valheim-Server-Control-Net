@@ -1,0 +1,149 @@
+<Window x:Class="ValheimControl.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Valheim Control — Settings"
+        Width="560" SizeToContent="Height"
+        MinWidth="480"
+        Background="{StaticResource BgDarkBrush}"
+        Foreground="{StaticResource TextPrimaryBrush}"
+        FontFamily="Segoe UI"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- ===== Header ===== -->
+        <StackPanel Grid.Row="0">
+            <Border Height="4" Background="{StaticResource ChevronBandBrush}" />
+            <Border Background="{StaticResource BgTitleBrush}"
+                    BorderBrush="{StaticResource BorderMutedBrush}"
+                    BorderThickness="0,0,0,1"
+                    Padding="20,12">
+                <StackPanel Orientation="Horizontal">
+                    <Rectangle Style="{StaticResource SectionAxeStyle}" />
+                    <TextBlock Text="VALHEIM · SETTINGS"
+                               Style="{StaticResource SectionHeaderStyle}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <!-- ===== Body ===== -->
+        <StackPanel Grid.Row="1" Margin="24">
+
+            <TextBlock Text="POLLING" Style="{StaticResource SectionHeaderStyle}" FontSize="13" />
+            <Border Style="{StaticResource DividerStyle}" Margin="0,4,0,12" />
+            <Grid Margin="0,0,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="Status refresh interval" />
+                    <TextBlock Text="How often the main window checks status, backup, world, uptime, and player activity."
+                               Style="{StaticResource SubtitleTextStyle}" FontSize="10"
+                               Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0" TextWrapping="Wrap" />
+                </StackPanel>
+                <ComboBox x:Name="PollingIntervalBox" Grid.Column="1" Width="140"
+                          SelectionChanged="PollingIntervalBox_SelectionChanged">
+                    <ComboBoxItem Content="15 seconds" Tag="15" />
+                    <ComboBoxItem Content="30 seconds" Tag="30" />
+                    <ComboBoxItem Content="60 seconds" Tag="60" />
+                    <ComboBoxItem Content="2 minutes" Tag="120" />
+                    <ComboBoxItem Content="5 minutes" Tag="300" />
+                </ComboBox>
+            </Grid>
+
+            <TextBlock Text="GUARDRAILS" Style="{StaticResource SectionHeaderStyle}" FontSize="13" />
+            <Border Style="{StaticResource DividerStyle}" Margin="0,4,0,12" />
+
+            <Border Background="{StaticResource BgTitleBrush}" BorderBrush="{StaticResource BorderMutedBrush}"
+                    BorderThickness="1" Padding="14,12" Margin="0,0,0,8">
+                <Grid>
+                    <StackPanel Margin="0,0,60,0">
+                        <TextBlock Text="Confirm before destructive actions" />
+                        <TextBlock Text="Stop, Delete World, Backup + Reboot, and Run Update all ask first. Turning this off skips those prompts entirely."
+                                   Style="{StaticResource SubtitleTextStyle}" FontSize="10"
+                                   Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <ToggleButton x:Name="ConfirmDestructiveToggle" Style="{StaticResource SwitchToggleStyle}"
+                                  HorizontalAlignment="Right" VerticalAlignment="Center"
+                                  Click="ConfirmDestructiveToggle_Click" />
+                </Grid>
+            </Border>
+
+            <Border Background="{StaticResource BgTitleBrush}" BorderBrush="{StaticResource BorderMutedBrush}"
+                    BorderThickness="1" Padding="14,12" Margin="0,0,0,20">
+                <Grid>
+                    <StackPanel Margin="0,0,60,0">
+                        <TextBlock Text="Warn if players recently joined" />
+                        <TextBlock Text="Adds a heads-up to Stop/Backup+Reboot confirmations if anyone's joined since the last restart. Not a guarantee of who's online right now."
+                                   Style="{StaticResource SubtitleTextStyle}" FontSize="10"
+                                   Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <ToggleButton x:Name="WarnPlayersToggle" Style="{StaticResource SwitchToggleStyle}"
+                                  HorizontalAlignment="Right" VerticalAlignment="Center"
+                                  Click="WarnPlayersToggle_Click" />
+                </Grid>
+            </Border>
+
+            <TextBlock Text="ACCENT COLOR" Style="{StaticResource SectionHeaderStyle}" FontSize="13" />
+            <Border Style="{StaticResource DividerStyle}" Margin="0,4,0,12" />
+            <StackPanel x:Name="AccentSwatchPanel" Orientation="Horizontal" Margin="0,0,0,20" />
+
+            <TextBlock Text="BACKUP RETENTION" Style="{StaticResource SectionHeaderStyle}" FontSize="13" />
+            <Border Style="{StaticResource DividerStyle}" Margin="0,4,0,12" />
+
+            <Grid Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Backup interval" VerticalAlignment="Center" />
+                <ComboBox x:Name="BackupIntervalBox" Grid.Column="1" Width="150"
+                          SelectionChanged="BackupSetting_SelectionChanged" />
+            </Grid>
+
+            <Grid Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Keep recent backups for" VerticalAlignment="Center" />
+                <ComboBox x:Name="RecentRetentionBox" Grid.Column="1" Width="150"
+                          SelectionChanged="BackupSetting_SelectionChanged" />
+            </Grid>
+
+            <Grid Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Keep one-per-day backups for" VerticalAlignment="Center" />
+                <ComboBox x:Name="DailyRetentionBox" Grid.Column="1" Width="150"
+                          SelectionChanged="BackupSetting_SelectionChanged" />
+            </Grid>
+
+            <Border Background="{StaticResource BgTitleBrush}" BorderBrush="{StaticResource BorderMutedBrush}"
+                    BorderThickness="1" Padding="14,10" Margin="0,0,0,12">
+                <TextBlock x:Name="DiskEstimateText" Text="Estimated disk usage: -"
+                           Style="{StaticResource MonoTextStyle}" FontSize="12" />
+            </Border>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <TextBlock x:Name="BackupSettingsStatus" Text="" VerticalAlignment="Center"
+                           Style="{StaticResource SubtitleTextStyle}" Foreground="{StaticResource TextMutedBrush}"
+                           Margin="0,0,12,0" />
+                <Button x:Name="SaveBackupSettingsButton" Content="SAVE BACKUP SETTINGS"
+                        Style="{StaticResource PrimaryButtonStyle}" IsEnabled="False"
+                        Click="SaveBackupSettingsButton_Click" />
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</Window>
