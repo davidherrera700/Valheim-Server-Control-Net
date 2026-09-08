@@ -2,6 +2,12 @@
 bin/
 obj/
 
+# Velopack build output - dotnet publish + vpk pack output. These get
+# uploaded as GitHub Release assets via `vpk upload github`, never
+# committed to the repo itself (the .nupkg files alone can be tens of MB).
+publish/
+Releases/
+
 # Local, per-PC generated config (never commit real server IPs/usernames)
 config/config.json
 

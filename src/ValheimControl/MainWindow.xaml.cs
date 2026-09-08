@@ -8,6 +8,9 @@ using System.Windows.Threading;
 using ValheimControl.Models;
 using ValheimControl.Services;
 using ValheimControl.Theme;
+using Velopack;
+using Velopack.Exceptions;
+using Velopack.Sources;
 using Shapes = System.Windows.Shapes;
 
 namespace ValheimControl;
@@ -16,6 +19,14 @@ public partial class MainWindow : Window
 {
     private static readonly TimeSpan AutoUpdateCheckPollInterval = TimeSpan.FromMinutes(15);
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+
+    // The app's own GitHub repo - what Velopack checks against for a newer
+    // release of the app itself, separate entirely from the Valheim
+    // dedicated server's own update check (which lives in UpdateWindow and
+    // checks Steam, not GitHub).
+    private const string AppUpdateRepoUrl = "https://github.com/davidherrera700/Valheim-Server-Control-Net";
+
+    private UpdateInfo? _pendingAppUpdate;
 
     private TimeSpan CurrentPollInterval =>
         TimeSpan.FromSeconds(Math.Max(5, _config.PollingIntervalSeconds));
@@ -75,6 +86,84 @@ public partial class MainWindow : Window
         _lastAutoUpdateCheckUtc = DateTime.UtcNow;
 
         ResetPollCountdown();
+
+        // Fire-and-forget: checking the app's own version is unrelated to
+        // everything else on this dashboard, and a slow/failed GitHub
+        // check should never hold up the rest of startup.
+        _ = CheckForAppUpdateAsync();
+    }
+
+    /// <summary>
+    /// Checks GitHub for a newer release of the app itself (not the
+    /// Valheim server). Silent on both "no update" and any failure -
+    /// AppUpdateButton just stays hidden in either case. Only shows
+    /// something on screen when there's genuinely an update to act on.
+    /// </summary>
+    private async Task CheckForAppUpdateAsync()
+    {
+        try
+        {
+            var mgr = new UpdateManager(new GithubSource(AppUpdateRepoUrl, null, false));
+            var newVersion = await mgr.CheckForUpdatesAsync();
+
+            if (newVersion is null) return; // already up to date, or check failed - stay quiet either way
+
+            _pendingAppUpdate = newVersion;
+            AppUpdateButton.Content = $"APP UPDATE AVAILABLE (v{newVersion.TargetFullRelease.Version})";
+            AppUpdateButton.Visibility = Visibility.Visible;
+            AppendLog($"An app update is available: v{newVersion.TargetFullRelease.Version}. Click 'App Update Available' in the header to install it.");
+        }
+        catch (NotInstalledException)
+        {
+            // Expected, not an error: this happens whenever running as a
+            // dev build (dotnet run, or a raw copied .exe) rather than a
+            // real install created by ValheimControl-win-Setup.exe.
+            // Self-updating only works from a genuine Velopack install.
+            AppendLog("(app update check skipped - this is a dev build, not an installed copy)");
+        }
+        catch (Exception ex)
+        {
+            // Never let a failed check (offline, GitHub rate-limited, etc.)
+            // surface as an error - this is a background nicety, not a
+            // required part of startup.
+            AppendLog($"(app update check failed silently: {ex.Message})");
+        }
+    }
+
+    private async void AppUpdateButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_pendingAppUpdate is null) return;
+
+        var confirm = MessageBox.Show(
+            $"Download and install v{_pendingAppUpdate.TargetFullRelease.Version}?\n\n" +
+            "The app will close and restart automatically once it's installed - " +
+            "any unsaved work in open windows should be finished first.",
+            "Update Valheim Control",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+
+        if (confirm != MessageBoxResult.Yes) return;
+
+        AppUpdateButton.IsEnabled = false;
+        AppUpdateButton.Content = "DOWNLOADING...";
+        AppendLog("Downloading app update...");
+
+        try
+        {
+            var mgr = new UpdateManager(new GithubSource(AppUpdateRepoUrl, null, false));
+            await mgr.DownloadUpdatesAsync(_pendingAppUpdate);
+
+            AppendLog("Download complete - restarting to apply the update.");
+            mgr.ApplyUpdatesAndRestart(_pendingAppUpdate);
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"App update failed: {ex.Message}");
+            MessageBox.Show($"Couldn't complete the update:\n\n{ex.Message}", "Update Failed",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            AppUpdateButton.IsEnabled = true;
+            AppUpdateButton.Content = $"APP UPDATE AVAILABLE (v{_pendingAppUpdate.TargetFullRelease.Version})";
+        }
     }
 
     private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)

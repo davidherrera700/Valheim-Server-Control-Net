@@ -1,11 +1,33 @@
 using System.Windows;
 using ValheimControl.Models;
 using ValheimControl.Services;
+using Velopack;
 
 namespace ValheimControl;
 
 public partial class App : Application
 {
+    /// <summary>
+    /// Velopack requires bootstrapping as early as possible in the app's
+    /// lifetime - earlier than WPF's normal auto-generated entry point
+    /// allows, which is why this custom Main exists (and why App.xaml's
+    /// build action had to change from ApplicationDefinition to Page in
+    /// the .csproj - only one class can be "the" entry point).
+    /// VelopackApp.Build().Run() is a no-op on a normal launch; it only
+    /// does something meaningful during an actual install/update/uninstall
+    /// operation, briefly intercepting startup to handle that instead of
+    /// running the app normally.
+    /// </summary>
+    [STAThread]
+    private static void Main(string[] args)
+    {
+        VelopackApp.Build().Run();
+
+        var app = new App();
+        app.InitializeComponent();
+        app.Run();
+    }
+
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);

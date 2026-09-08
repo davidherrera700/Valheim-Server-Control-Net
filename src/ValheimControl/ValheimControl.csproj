@@ -12,11 +12,19 @@
     <!-- Custom icon: Assets\valheim.ico -->
     <ApplicationIcon>Assets\valheim.ico</ApplicationIcon>
 
-    <!-- Publish settings for a single, self-contained .exe -->
+    <!-- Publish settings for a self-contained app. PublishSingleFile is
+         deliberately NOT set here anymore - it conflicts with Velopack,
+         which needs visibility into individual files to compute delta
+         patches between versions, and has its own packaging format
+         (vpk pack) that supersedes single-file publishing entirely. -->
     <SelfContained>true</SelfContained>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <PublishSingleFile>true</PublishSingleFile>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+
+    <!-- Required by Velopack: App.xaml.cs now has its own custom Main
+         method (see the [STAThread] Main below) instead of using WPF's
+         default auto-generated entry point, so the app needs to be told
+         explicitly where Main lives. -->
+    <StartupObject>ValheimControl.App</StartupObject>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,6 +32,19 @@
     <PackageReference Include="SSH.NET" Version="2026.0.0" />
     <!-- Needed for 'dynamic' COM interop with WScript.Shell in ShortcutService -->
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+    <!-- Self-updating: lets the app check for, download, and apply its
+         own updates from inside the dashboard instead of everyone
+         manually downloading a new .exe from GitHub each time. -->
+    <PackageReference Include="Velopack" Version="1.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Required by Velopack for WPF: App.xaml can no longer be the
+         auto-generated application entry point (ApplicationDefinition),
+         since that entry point is now the custom Main method below -
+         App.xaml becomes a normal Page instead. -->
+    <ApplicationDefinition Remove="App.xaml" />
+    <Page Include="App.xaml" />
   </ItemGroup>
 
   <ItemGroup>

@@ -18,5 +18,11 @@ RestartSec=5
 Environment=ASPNETCORE_URLS=http://100.71.61.39:5080
 Environment=ASPNETCORE_ENVIRONMENT=Production
 
+# The JWT signing key lives ONLY on the server, in a file that is never
+# committed to git - see the "Rotating the JWT key" section in README.md
+# for how to create it. Do NOT put the actual key value in this file;
+# this file itself is tracked in source control.
+EnvironmentFile=/etc/valheim-control-api.env
+
 [Install]
 WantedBy=multi-user.target

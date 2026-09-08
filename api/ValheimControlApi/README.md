@@ -107,11 +107,49 @@ with which username the request came from - proving the whole chain
 (password hash verify -> JWT issue -> JWT verify -> real local action)
 works end to end.
 
-## A note on the JWT signing key
+## Rotating the JWT key
 
-`appsettings.json` already has a randomly-generated key filled in, so
-this works out of the box - but since that key is committed to the repo
-for convenience during this build-out phase, treat it as not-actually-
-secret. Before this handles anything more sensitive than a status check,
-generate a fresh key and keep it out of version control (an environment
-variable or a file outside the repo, not `appsettings.json`).
+The signing key used to be committed directly in `appsettings.json` for
+convenience during early development - that's no longer the case, and
+should never be again, especially now that this repo may be public. The
+key now lives **only** on the server, in a file that's never tracked by
+git, referenced by the systemd service via `EnvironmentFile=`.
+
+**One-time setup on the server:**
+
+```bash
+sudo nano /etc/valheim-control-api.env
+```
+
+Add a single line (generate your own random value - don't reuse any key
+that has ever appeared in git history, since that one should be treated
+as permanently compromised):
+
+```
+Jwt__Key=<a long random string - 48+ bytes, base64-encoded is fine>
+```
+
+Lock down the file so only root can read it:
+
+```bash
+sudo chmod 600 /etc/valheim-control-api.env
+sudo chown root:root /etc/valheim-control-api.env
+```
+
+Then restart the service to pick it up:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart valheim-control-api
+```
+
+**Important:** rotating the key immediately invalidates every JWT issued
+under the old one - everyone currently signed in (including yourself)
+will need to log in again on their next request. This is expected and
+correct; it's exactly what should happen after a key rotation.
+
+If the service fails to start after this change, check that
+`/etc/valheim-control-api.env` exists and is readable - `Program.cs`
+deliberately refuses to start (`InvalidOperationException`) rather than
+run with no signing key at all, instead of silently falling back to
+something insecure.

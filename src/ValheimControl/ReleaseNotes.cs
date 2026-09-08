@@ -29,6 +29,14 @@ public static class ReleaseNotes
             "new system\n" +
             "- The old shared \"delete password\" is gone - deleting a world now just " +
             "checks that you're Owner",
+        ["3.1.0"] =
+            "- The app can now update itself right from the dashboard - no more " +
+            "manually downloading a new .exe from GitHub each time\n" +
+            "- A gold \"App Update Available\" chip appears in the header only when " +
+            "there's genuinely something new - click it to install and restart " +
+            "automatically",
+        ["3.1.1"] =
+            "Test release - confirming self-update works.",
     };
 
     public static string? ForCurrentVersion =>
