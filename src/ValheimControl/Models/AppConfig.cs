@@ -54,6 +54,22 @@ public class AppConfig
     public string? LastDismissedReleaseNotesVersion { get; set; }
 
     /// <summary>
+    /// Base URL of the new ValheimControlApi backend (e.g. "http://100.71.61.39:5080"),
+    /// used by the new login-based, real-user-account mode. Coexists
+    /// alongside the older SSH fields above during the migration - nothing
+    /// here affects the existing SSH-based windows.
+    /// </summary>
+    public string? ApiBaseUrl { get; set; }
+
+    /// <summary>
+    /// The "remember me" session - only the JWT is ever persisted, never
+    /// the password. Validated fresh against /api/auth/whoami on next
+    /// open rather than trusted as-is; if the account was deleted or the
+    /// token expired, whoami says so and this gets cleared.
+    /// </summary>
+    public string? ApiSessionToken { get; set; }
+
+    /// <summary>
     /// Expands environment variables (e.g. %USERPROFILE%) in the key path,
     /// same convention the v1 config used. Computed at runtime, not stored -
     /// JsonIgnore keeps it out of config.json.

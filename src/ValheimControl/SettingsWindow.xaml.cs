@@ -11,7 +11,7 @@ namespace ValheimControl;
 public partial class SettingsWindow : Window
 {
     private readonly AppConfig _config;
-    private readonly SshService _ssh;
+    private readonly ApiClient _api;
     private bool _suppressChangeEvents;
 
     // (Display, systemd value, minutes) - the systemd value and minutes both
@@ -55,12 +55,12 @@ public partial class SettingsWindow : Window
     // the on-screen disk usage estimate - not an exact figure.
     private const double EstimatedGigabytesPerBackup = 0.3;
 
-    public SettingsWindow(AppConfig config)
+    public SettingsWindow(AppConfig config, ApiClient api)
     {
         InitializeComponent();
         DarkTitleBarHelper.Apply(this);
         _config = config;
-        _ssh = new SshService(config);
+        _api = api;
         Loaded += SettingsWindow_Loaded;
     }
 
@@ -143,40 +143,38 @@ public partial class SettingsWindow : Window
         SaveBackupSettingsButton.IsEnabled = false;
         BackupSettingsStatus.Text = "Loading current settings...";
 
-        var result = await _ssh.GetBackupSettingsAsync();
+        var result = await _api.GetAsync("/api/backup/settings");
         if (!result.Success)
         {
             BackupSettingsStatus.Text = $"Couldn't load current settings: {result.Output}";
             return;
         }
 
-        var values = new Dictionary<string, string>();
-        foreach (var line in result.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        BackupSettingsDto? settings;
+        try
         {
-            var parts = line.Split('=', 2);
-            if (parts.Length == 2) values[parts[0].Trim()] = parts[1].Trim();
+            settings = System.Text.Json.JsonSerializer.Deserialize<BackupSettingsDto>(
+                result.Output, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        catch
+        {
+            BackupSettingsStatus.Text = "Couldn't load current settings: unexpected response.";
+            return;
         }
 
         _suppressChangeEvents = true;
 
-        if (values.TryGetValue("IntervalRaw", out var intervalRaw))
-        {
-            SelectComboItemByTag(BackupIntervalBox, intervalRaw);
-        }
-        if (values.TryGetValue("RecentRetentionMinutes", out var recentMin))
-        {
-            SelectComboItemByTag(RecentRetentionBox, recentMin);
-        }
-        if (values.TryGetValue("DailyRetentionDays", out var dailyDays))
-        {
-            SelectComboItemByTag(DailyRetentionBox, dailyDays);
-        }
+        if (settings?.Interval is not null) SelectComboItemByTag(BackupIntervalBox, settings.Interval);
+        if (settings?.RecentRetentionMinutes is int recentMin) SelectComboItemByTag(RecentRetentionBox, recentMin.ToString());
+        if (settings?.DailyRetentionDays is int dailyDays) SelectComboItemByTag(DailyRetentionBox, dailyDays.ToString());
 
         _suppressChangeEvents = false;
 
         BackupSettingsStatus.Text = "";
         UpdateDiskEstimate();
     }
+
+    private record BackupSettingsDto(int? RecentRetentionMinutes, int? DailyRetentionDays, string? Interval);
 
     private static void SelectComboItemByTag(ComboBox box, string tagValue)
     {
@@ -243,18 +241,18 @@ public partial class SettingsWindow : Window
         SaveBackupSettingsButton.IsEnabled = false;
         BackupSettingsStatus.Text = "Saving...";
 
-        var retentionResult = await _ssh.SetBackupRetentionAsync(recentMinutes, dailyDays);
-        if (!retentionResult.Success)
+        var result = await _api.PutAsync("/api/backup/settings", new
         {
-            BackupSettingsStatus.Text = $"Failed to save retention: {retentionResult.Output}";
-            SaveBackupSettingsButton.IsEnabled = true;
-            return;
-        }
+            recentRetentionMinutes = recentMinutes,
+            dailyRetentionDays = dailyDays,
+            interval = intervalValue
+        });
 
-        var intervalResult = await _ssh.SetBackupIntervalAsync(intervalValue);
-        if (!intervalResult.Success)
+        if (!result.Success)
         {
-            BackupSettingsStatus.Text = $"Retention saved, but interval failed: {intervalResult.Output}";
+            BackupSettingsStatus.Text = result.StatusCode == 403
+                ? "Permission denied - your account doesn't have backup-settings permission."
+                : $"Failed to save: {result.Output}";
             SaveBackupSettingsButton.IsEnabled = true;
             return;
         }

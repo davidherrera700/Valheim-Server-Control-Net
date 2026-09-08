@@ -50,7 +50,11 @@
                                 Margin="0,0,10,0" Click="UpdateWindowButton_Click" />
                         <Button x:Name="SettingsWindowButton" Content="SETTINGS"
                                 Style="{StaticResource ChipButtonStyle}"
-                                Margin="0,0,14,0" Click="SettingsWindowButton_Click" />
+                                Margin="0,0,10,0" Click="SettingsWindowButton_Click" />
+                        <Button x:Name="AccountButton" Content="ACCOUNT"
+                                Style="{StaticResource ChipButtonStyle}"
+                                BorderBrush="{StaticResource AccentGoldBrush}"
+                                Margin="0,0,14,0" Click="AccountButton_Click" />
                         <TextBlock x:Name="HostLabel"
                                    Text=""
                                    Style="{StaticResource MonoTextStyle}"

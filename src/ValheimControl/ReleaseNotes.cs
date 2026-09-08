@@ -16,6 +16,19 @@ public static class ReleaseNotes
             "- Enforced app updates: outdated PCs now get a clear notice instead of " +
             "silently drifting out of sync with the server\n" +
             "- This \"What's New\" popup itself",
+        ["3.0.0"] =
+            "Major update - the app now runs on a real backend with real user accounts:\n" +
+            "- Sign in with your own username and password (a shared SSH key is no " +
+            "longer the only way in)\n" +
+            "- Real Roles & Permissions - Owner can grant specific people specific " +
+            "actions, enforced on every request\n" +
+            "- New Account page - see your own permissions, change your password, log out\n" +
+            "- Manage Users & Roles (Owner-only) - create accounts and roles right " +
+            "from the app, no more command-line setup\n" +
+            "- Every window (dashboard, Runestones, Update, Settings) now runs on this " +
+            "new system\n" +
+            "- The old shared \"delete password\" is gone - deleting a world now just " +
+            "checks that you're Owner",
     };
 
     public static string? ForCurrentVersion =>

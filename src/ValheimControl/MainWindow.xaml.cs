@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
@@ -14,13 +15,13 @@ namespace ValheimControl;
 public partial class MainWindow : Window
 {
     private static readonly TimeSpan AutoUpdateCheckPollInterval = TimeSpan.FromMinutes(15);
+    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     private TimeSpan CurrentPollInterval =>
-        TimeSpan.FromSeconds(Math.Max(5, _config?.PollingIntervalSeconds ?? 30));
+        TimeSpan.FromSeconds(Math.Max(5, _config.PollingIntervalSeconds));
 
-    private AppConfig? _config;
-    private SshService? _ssh;
-    private readonly SteamUpdateService _steam = new();
+    private readonly AppConfig _config;
+    private readonly ApiClient _api;
     private DispatcherTimer? _statusTimer;
     private DispatcherTimer? _countdownTimer;
     private DispatcherTimer? _autoUpdateTimer;
@@ -29,47 +30,32 @@ public partial class MainWindow : Window
     private int _recentJoinCount;
     private bool _isBusy;
 
-    public MainWindow()
+    /// <summary>
+    /// config and api are both always provided now - App.xaml.cs handles
+    /// config loading and the login gate before this window is ever
+    /// constructed, so there's no "maybe it failed" scenario to guard
+    /// against in here the way there used to be.
+    /// </summary>
+    public MainWindow(AppConfig config, ApiClient api)
     {
         InitializeComponent();
         DarkTitleBarHelper.Apply(this);
+        _config = config;
+        _api = api;
         Loaded += MainWindow_Loaded;
         Closing += MainWindow_Closing;
     }
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        if (!ConfigService.ConfigExists)
-        {
-            MessageBox.Show(
-                $"No configuration file found.\n\nExpected at:\n{ConfigService.ConfigFilePath}\n\n" +
-                "Run the installer first, or copy config.example.json to that location and fill in your server details.",
-                "Valheim Control - Missing Config",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
-            Close();
-            return;
-        }
+        ThemeService.ApplyAccentColor(_config.AccentColorPreset);
 
-        try
-        {
-            _config = ConfigService.Load();
-            _ssh = new SshService(_config);
-            ThemeService.ApplyAccentColor(_config.AccentColorPreset);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Failed to load configuration:\n{ex.Message}", "Valheim Control - Config Error",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-            Close();
-            return;
-        }
-
-        HostLabel.Text = _config.Server;
+        var apiHost = Uri.TryCreate(_config.ApiBaseUrl, UriKind.Absolute, out var uri) ? uri.Host : _config.ApiBaseUrl;
+        HostLabel.Text = $"{_api.Username} @ {apiHost}";
 
         ShowWhatsNewIfNeeded();
 
-        AppendLog($"Connected config: {_config.User}@{_config.Server} (port {_config.SshPort})");
+        AppendLog($"Signed in as '{_api.Username}' ({(_api.IsOwner ? "Owner" : _api.RoleName ?? "no role")}) - {_config.ApiBaseUrl}");
         await RefreshStatusAsync();
         await RefreshLastBackupAsync();
         await RefreshWorldAndUptimeAsync();
@@ -99,12 +85,6 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Fires every AutoUpdateCheckInterval regardless of the toggle state -
-    /// the toggle just decides whether this tick actually does anything.
-    /// Both windows share the same in-memory AppConfig instance, so a change
-    /// made in UpdateWindow is visible here immediately without reloading.
-    /// </summary>
-    /// <summary>
     /// Polls every AutoUpdateCheckPollInterval (a short, fixed interval) but
     /// only actually checks for updates once _config.AutoUpdateCheckIntervalHours
     /// has genuinely elapsed - this means a change to the interval made in
@@ -113,7 +93,7 @@ public partial class MainWindow : Window
     /// </summary>
     private async void AutoUpdateTimer_Tick(object? sender, EventArgs e)
     {
-        if (_config?.AutoUpdateEnabled != true || _ssh is null || _isBusy) return;
+        if (_config.AutoUpdateEnabled != true || _isBusy) return;
 
         var intervalHours = Math.Max(1, _config.AutoUpdateCheckIntervalHours);
         if (_lastAutoUpdateCheckUtc is not null &&
@@ -129,27 +109,40 @@ public partial class MainWindow : Window
         {
             AppendLog("(auto-update) Checking for updates...");
 
-            var installedResult = await _ssh.GetInstalledBuildIdAsync();
-            var latestBuild = await _steam.GetLatestPublicBuildIdAsync();
-
-            if (!installedResult.Success || installedResult.Output is "unknown" or "(no output)" || latestBuild is null)
+            var checkResult = await _api.GetAsync("/api/update/check");
+            if (!checkResult.Success)
             {
                 AppendLog("(auto-update) Could not check for updates right now - skipping this cycle.");
                 return;
             }
 
-            var installedBuild = installedResult.Output.Trim();
-            if (installedBuild == latestBuild)
+            UpdateCheckResponse? check;
+            try
+            {
+                check = JsonSerializer.Deserialize<UpdateCheckResponse>(checkResult.Output, JsonOptions);
+            }
+            catch
+            {
+                AppendLog("(auto-update) Got an unexpected response checking for updates - skipping this cycle.");
+                return;
+            }
+
+            if (check?.InstalledBuild is null || check.LatestBuild is null)
+            {
+                AppendLog("(auto-update) Could not determine current/latest build - skipping this cycle.");
+                return;
+            }
+
+            if (!check.UpdateAvailable)
             {
                 AppendLog("(auto-update) Already up to date.");
                 return;
             }
 
-            AppendLog($"(auto-update) Update available ({installedBuild} -> {latestBuild}). Running it now...");
-            var updateResult = await _ssh.RunServerUpdateAsync();
-            AppendLog(updateResult.Success
-                ? "(auto-update) Update completed."
-                : $"(auto-update) Update reported a problem: {updateResult.Output}");
+            AppendLog($"(auto-update) Update available ({check.InstalledBuild} -> {check.LatestBuild}). Running it now...");
+            var updateResult = await _api.PostAsync("/api/update/run");
+            var (success, output) = ParseActionResult(updateResult);
+            AppendLog(success ? "(auto-update) Update completed." : $"(auto-update) Update reported a problem: {output}");
 
             await RefreshStatusAsync();
             await RefreshWorldAndUptimeAsync();
@@ -164,21 +157,32 @@ public partial class MainWindow : Window
     private async void StatusTimer_Tick(object? sender, EventArgs e)
     {
         // Skip this tick if a button action (or an overlapping tick) is already
-        // mid-flight - avoids stacking up concurrent SSH connections.
-        if (_isBusy || _ssh is null) return;
+        // mid-flight - avoids stacking up concurrent requests.
+        if (_isBusy) return;
 
         _isBusy = true;
         try
         {
-            var result = await _ssh.CheckStatusAsync();
-            var previousText = StateText.Text;
-            UpdateStatusLabel(result.Output);
-
-            // Only write to the log when the state actually changes, so the
-            // panel doesn't fill up with a line every 30 seconds.
-            if (StateText.Text != previousText)
+            var result = await _api.GetAsync("/api/status");
+            if (result.Success)
             {
-                AppendLog($"(auto-refresh) Status: {StateText.Text}");
+                try
+                {
+                    var parsed = JsonSerializer.Deserialize<StatusResponse>(result.Output, JsonOptions);
+                    var previousText = StateText.Text;
+                    UpdateStatusLabel(parsed?.Raw ?? "");
+
+                    // Only write to the log when the state actually changes, so the
+                    // panel doesn't fill up with a line every poll cycle.
+                    if (StateText.Text != previousText)
+                    {
+                        AppendLog($"(auto-refresh) Status: {StateText.Text}");
+                    }
+                }
+                catch
+                {
+                    // leave status label as-is on an unexpected response shape
+                }
             }
 
             await RefreshLastBackupAsync();
@@ -255,41 +259,84 @@ public partial class MainWindow : Window
         StateDot.Fill = color;
     }
 
+    /// <summary>
+    /// Parses the {success, output} shape almost every action endpoint
+    /// returns. Handles 403 Forbidden specially (empty body by design,
+    /// since Results.Forbid() sends nothing back) with a clear message
+    /// instead of a confusing blank/parse-failure result - the whole
+    /// point of building real permissions is for a denial to be obvious,
+    /// not silent.
+    /// </summary>
+    private static (bool Success, string Output) ParseActionResult(ApiResult r)
+    {
+        if (r.StatusCode == 403)
+        {
+            return (false, "Permission denied - your account doesn't have this permission.");
+        }
+
+        if (!r.Success && string.IsNullOrWhiteSpace(r.Output))
+        {
+            return (false, $"Request failed ({r.StatusCode}).");
+        }
+
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<ActionResponse>(r.Output, JsonOptions);
+            return (parsed?.Success ?? r.Success, parsed?.Output ?? r.Output);
+        }
+        catch
+        {
+            return (r.Success, r.Output);
+        }
+    }
+
     private async Task RefreshStatusAsync()
     {
-        if (_ssh is null) return;
-        var result = await _ssh.CheckStatusAsync();
-        UpdateStatusLabel(result.Output);
-        AppendLog(result.Output);
+        var result = await _api.GetAsync("/api/status");
+        if (!result.Success)
+        {
+            AppendLog($"Status check failed: {result.Output}");
+            return;
+        }
+
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<StatusResponse>(result.Output, JsonOptions);
+            UpdateStatusLabel(parsed?.Raw ?? "");
+            AppendLog(parsed?.Raw ?? result.Output);
+        }
+        catch
+        {
+            AppendLog($"Status check returned unexpected data: {result.Output}");
+        }
     }
 
     private async Task RefreshLastBackupAsync()
     {
-        if (_ssh is null) return;
-
-        var result = await _ssh.GetLastBackupInfoAsync();
-        if (!result.Success || string.IsNullOrWhiteSpace(result.Output) || result.Output == "(no output)")
+        var result = await _api.GetAsync("/api/backup/last");
+        if (!result.Success)
         {
             LastBackupValue.Text = "unknown";
             return;
         }
 
-        var firstLine = result.Output.Split('\n')[0].Trim();
-        var parts = firstLine.Split(' ', 2);
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<LastBackupResponse>(result.Output, JsonOptions);
+            if (parsed?.LastBackupUtc is not DateTime backupUtc)
+            {
+                LastBackupValue.Text = "unknown";
+                return;
+            }
 
-        if (parts.Length < 1 || !double.TryParse(
-                parts[0], System.Globalization.NumberStyles.Any,
-                System.Globalization.CultureInfo.InvariantCulture, out var epochSeconds))
+            var backupTimeLocal = DateTime.SpecifyKind(backupUtc, DateTimeKind.Utc).ToLocalTime();
+            LastBackupValue.Text = FormatRelativeTime(DateTime.Now - backupTimeLocal);
+            LastBackupValue.ToolTip = backupTimeLocal.ToString("yyyy-MM-dd HH:mm:ss");
+        }
+        catch
         {
             LastBackupValue.Text = "unknown";
-            return;
         }
-
-        var backupTimeLocal = DateTimeOffset.FromUnixTimeSeconds((long)epochSeconds).LocalDateTime;
-        var relative = FormatRelativeTime(DateTime.Now - backupTimeLocal);
-
-        LastBackupValue.Text = relative;
-        LastBackupValue.ToolTip = backupTimeLocal.ToString("yyyy-MM-dd HH:mm:ss");
     }
 
     private static string FormatRelativeTime(TimeSpan span)
@@ -301,31 +348,35 @@ public partial class MainWindow : Window
     }
 
     // ------------------------------------------------------------------
-    // Phase 2: World name, uptime, recent player joins
+    // World name, uptime, recent player joins - all noticeably simpler
+    // now than the SSH-based versions, since the API already returns
+    // clean, structured data instead of raw text that needed client-side
+    // parsing (systemctl output, /proc/pid/cmdline argv splitting, etc.).
     // ------------------------------------------------------------------
 
     private async Task RefreshWorldAndUptimeAsync()
     {
-        if (_ssh is null) return;
-
-        var uptimeResult = await _ssh.GetUptimeEpochAsync();
-        if (uptimeResult.Success &&
-            long.TryParse(uptimeResult.Output.Trim(), out var startEpoch) &&
-            startEpoch > 0)
+        var result = await _api.GetAsync("/api/world-info");
+        if (!result.Success)
         {
-            var startUtc = DateTimeOffset.FromUnixTimeSeconds(startEpoch).UtcDateTime;
-            var span = DateTime.UtcNow - startUtc;
-            UptimeValue.Text = FormatUptime(span);
+            WorldValue.Text = "—";
+            UptimeValue.Text = "—";
+            return;
         }
-        else
+
+        try
         {
+            var parsed = JsonSerializer.Deserialize<WorldInfoResponse>(result.Output, JsonOptions);
+            WorldValue.Text = parsed?.World ?? "—";
+            UptimeValue.Text = parsed?.UptimeSeconds is long seconds
+                ? FormatUptime(TimeSpan.FromSeconds(seconds))
+                : "—";
+        }
+        catch
+        {
+            WorldValue.Text = "—";
             UptimeValue.Text = "—";
         }
-
-        var worldResult = await _ssh.GetWorldArgvAsync();
-        WorldValue.Text = worldResult.Success
-            ? ParseWorldName(worldResult.Output) ?? "—"
-            : "—";
     }
 
     private static string FormatUptime(TimeSpan span)
@@ -336,31 +387,26 @@ public partial class MainWindow : Window
             : $"{span.Hours:D2}:{span.Minutes:D2}";
     }
 
-    private static string? ParseWorldName(string argvOutput)
-    {
-        if (string.IsNullOrWhiteSpace(argvOutput) || argvOutput == "(no output)") return null;
-
-        var lines = argvOutput.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        for (var i = 0; i < lines.Length - 1; i++)
-        {
-            if (lines[i].Trim() == "-world")
-            {
-                return lines[i + 1].Trim().Trim('"');
-            }
-        }
-        return null;
-    }
-
     private async Task RefreshPlayerActivityAsync()
     {
-        if (_ssh is null) return;
+        var result = await _api.GetAsync("/api/players/recent");
 
-        var result = await _ssh.GetRecentPlayerJoinsAsync();
-        var entries = ParsePlayerJoins(result.Output);
+        PlayerJoinDto[] entries = [];
+        if (result.Success)
+        {
+            try
+            {
+                entries = JsonSerializer.Deserialize<PlayersResponse>(result.Output, JsonOptions)?.Players ?? [];
+            }
+            catch
+            {
+                // leave entries empty on an unexpected response shape
+            }
+        }
 
         PlayerRosterPanel.Children.Clear();
 
-        if (entries.Count == 0)
+        if (entries.Length == 0)
         {
             _recentJoinCount = 0;
             PlayerCount.Text = "none yet";
@@ -372,12 +418,14 @@ public partial class MainWindow : Window
             return;
         }
 
-        _recentJoinCount = entries.Count;
-        PlayerCount.Text = $"{entries.Count} seen";
+        _recentJoinCount = entries.Length;
+        PlayerCount.Text = $"{entries.Length} seen";
 
         // Most recent first, capped so the panel doesn't grow unbounded over a long session.
-        foreach (var (name, joinedAtLocal) in entries.AsEnumerable().Reverse().Take(10))
+        foreach (var entry in entries.AsEnumerable().Reverse().Take(10))
         {
+            var joinedAtLocal = DateTime.SpecifyKind(entry.JoinedAtUtc, DateTimeKind.Utc).ToLocalTime();
+
             var row = new Grid { Margin = new Thickness(0, 0, 0, 8) };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -386,7 +434,7 @@ public partial class MainWindow : Window
             var marker = new Shapes.Rectangle { Style = (Style)FindResource("DiamondMarkerStyle") };
             Grid.SetColumn(marker, 0);
 
-            var nameBlock = new TextBlock { Text = name, Margin = new Thickness(12, 0, 8, 0) };
+            var nameBlock = new TextBlock { Text = entry.Name, Margin = new Thickness(12, 0, 8, 0) };
             Grid.SetColumn(nameBlock, 1);
 
             var timeBlock = new TextBlock
@@ -406,42 +454,17 @@ public partial class MainWindow : Window
         }
     }
 
-    private static List<(string Name, DateTime JoinedAtLocal)> ParsePlayerJoins(string output)
-    {
-        var results = new List<(string, DateTime)>();
-        if (string.IsNullOrWhiteSpace(output) || output == "(no output)") return results;
-
-        foreach (var line in output.Split('\n', StringSplitOptions.RemoveEmptyEntries))
-        {
-            var match = Regex.Match(line, @"Got character ZDOID from (.+?)\s*:");
-            if (!match.Success) continue;
-
-            var name = match.Groups[1].Value.Trim();
-            var tsToken = line.Split(' ', 2)[0];
-
-            var joinedAt = DateTimeOffset.TryParse(
-                tsToken, System.Globalization.CultureInfo.InvariantCulture,
-                System.Globalization.DateTimeStyles.None, out var ts)
-                ? ts.LocalDateTime
-                : DateTime.Now;
-
-            results.Add((name, joinedAt));
-        }
-
-        return results;
-    }
-
     // ------------------------------------------------------------------
     // Button handlers
     // ------------------------------------------------------------------
 
     private async void StartButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_ssh is null) return;
         SetBusy(true);
         AppendLog("Starting Valheim...");
-        var r = await _ssh.StartServiceAsync();
-        AppendLog(r.Success ? "Start command sent." : $"Start failed: {r.Output}");
+        var r = await _api.PostAsync("/api/server/start");
+        var (success, output) = ParseActionResult(r);
+        AppendLog(success ? "Start command sent." : $"Start failed: {output}");
         await Task.Delay(2000);
         await RefreshStatusAsync();
         SetBusy(false);
@@ -450,11 +473,11 @@ public partial class MainWindow : Window
 
     private async void RestartButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_ssh is null) return;
         SetBusy(true);
         AppendLog("Restarting Valheim...");
-        var r = await _ssh.RestartServiceAsync();
-        AppendLog(r.Success ? "Restart command sent." : $"Restart failed: {r.Output}");
+        var r = await _api.PostAsync("/api/server/restart");
+        var (success, output) = ParseActionResult(r);
+        AppendLog(success ? "Restart command sent." : $"Restart failed: {output}");
         await Task.Delay(2000);
         await RefreshStatusAsync();
         SetBusy(false);
@@ -470,10 +493,10 @@ public partial class MainWindow : Window
     /// </summary>
     private bool ConfirmDestructiveAction(string title, string message)
     {
-        if (_config?.ConfirmDestructiveActions == false) return true;
+        if (_config.ConfirmDestructiveActions == false) return true;
 
         var fullMessage = message;
-        if (_config?.WarnIfPlayersRecentlyJoined == true && _recentJoinCount > 0)
+        if (_config.WarnIfPlayersRecentlyJoined == true && _recentJoinCount > 0)
         {
             fullMessage += $"\n\nHeads up: {_recentJoinCount} player(s) have joined since the last restart " +
                             "(this doesn't guarantee anyone's online right now, just that someone has been recently).";
@@ -489,12 +512,13 @@ public partial class MainWindow : Window
             "Confirm Stop",
             "Are you sure you want to stop the Valheim server? Players will be disconnected.");
 
-        if (!confirmed || _ssh is null) return;
+        if (!confirmed) return;
 
         SetBusy(true);
         AppendLog("Stopping Valheim...");
-        var r = await _ssh.StopServiceAsync();
-        AppendLog(r.Success ? "Stop command sent." : $"Stop failed: {r.Output}");
+        var r = await _api.PostAsync("/api/server/stop");
+        var (success, output) = ParseActionResult(r);
+        AppendLog(success ? "Stop command sent." : $"Stop failed: {output}");
         await Task.Delay(2000);
         await RefreshStatusAsync();
         SetBusy(false);
@@ -503,39 +527,34 @@ public partial class MainWindow : Window
 
     private async void BackupButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_ssh is null) return;
         SetBusy(true);
         AppendLog("Running manual backup...");
-        var r = await _ssh.RunBackupAsync();
-        AppendLog(r.Success ? "Backup completed." : $"Backup failed: {r.Output}");
-        if (!string.IsNullOrWhiteSpace(r.Output)) AppendLog(r.Output);
-        if (r.Success) await RefreshLastBackupAsync();
+        var r = await _api.PostAsync("/api/backup/run");
+        var (success, output) = ParseActionResult(r);
+        AppendLog(success ? "Backup completed." : $"Backup failed: {output}");
+        if (!string.IsNullOrWhiteSpace(output)) AppendLog(output);
+        if (success) await RefreshLastBackupAsync();
         SetBusy(false);
     }
 
+    /// <summary>
+    /// One call now instead of two sequential ones - the API's own
+    /// /api/server/backup-and-restart endpoint already does backup then
+    /// restart atomically server-side, so there's no client-side
+    /// sequencing to manage here anymore.
+    /// </summary>
     private async void BackupRestartButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_ssh is null) return;
         SetBusy(true);
-        AppendLog("Running backup before restart...");
-        var backupResult = await _ssh.RunBackupAsync();
-        AppendLog(backupResult.Success ? "Backup completed." : $"Backup failed: {backupResult.Output}");
+        AppendLog("Running backup, then restarting...");
+        var r = await _api.PostAsync("/api/server/backup-and-restart");
+        var (success, output) = ParseActionResult(r);
+        AppendLog(success ? "Backup + restart completed." : $"Backup + restart failed: {output}");
 
-        if (backupResult.Success)
-        {
-            await RefreshLastBackupAsync();
-            AppendLog("Restarting Valheim...");
-            var restartResult = await _ssh.RestartServiceAsync();
-            AppendLog(restartResult.Success ? "Restart command sent." : $"Restart failed: {restartResult.Output}");
-            await Task.Delay(2000);
-            await RefreshStatusAsync();
-            ResetPollCountdown();
-        }
-        else
-        {
-            AppendLog("Skipping restart because backup failed.");
-        }
-
+        await RefreshLastBackupAsync();
+        await Task.Delay(2000);
+        await RefreshStatusAsync();
+        ResetPollCountdown();
         SetBusy(false);
     }
 
@@ -549,16 +568,22 @@ public partial class MainWindow : Window
 
     private async void LogsButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_ssh is null) return;
         SetBusy(true);
         AppendLog("Fetching recent log lines...");
-        var r = await _ssh.GetRecentLogsAsync();
+        var r = await _api.GetAsync("/api/logs?lines=50");
+        var (success, output) = ParseActionResult(r);
         AppendLog("----- Recent Server Logs -----");
-        AppendLog(r.Output);
+        AppendLog(success ? output : $"Failed: {output}");
         AppendLog("----- End of Logs -----");
         SetBusy(false);
     }
 
+    /// <summary>
+    /// One call now instead of three sequential ones - the API's own
+    /// /api/server/backup-and-reboot endpoint already does stop, backup,
+    /// then reboot atomically server-side (and it's Owner-only there,
+    /// enforced fresh against the database on every request).
+    /// </summary>
     private async void BackupRebootButton_Click(object sender, RoutedEventArgs e)
     {
         var confirmed = ConfirmDestructiveAction(
@@ -570,39 +595,24 @@ public partial class MainWindow : Window
             "The server will be offline for a few minutes while the host restarts, " +
             "then it will come back online automatically. Continue?");
 
-        if (!confirmed || _ssh is null) return;
+        if (!confirmed) return;
 
         SetBusy(true);
+        AppendLog("Stopping, backing up, and rebooting the host...");
 
-        AppendLog("Stopping Valheim before reboot...");
-        var stopResult = await _ssh.StopServiceAsync();
-        AppendLog(stopResult.Success ? "Valheim stopped." : $"Stop failed: {stopResult.Output}");
+        var r = await _api.PostAsync("/api/server/backup-and-reboot");
+        var (success, output) = ParseActionResult(r);
 
-        if (!stopResult.Success)
+        if (!success)
         {
-            AppendLog("Aborting - refusing to reboot while the stop command failed.");
+            AppendLog($"Backup + Reboot failed: {output}");
             SetBusy(false);
             return;
         }
 
-        AppendLog("Running backup...");
-        var backupResult = await _ssh.RunBackupAsync();
-        AppendLog(backupResult.Success ? "Backup completed." : $"Backup failed: {backupResult.Output}");
-
-        if (!backupResult.Success)
-        {
-            AppendLog("Aborting reboot - backup did not complete successfully. Valheim remains stopped; " +
-                      "start it manually or investigate the backup failure first.");
-            SetBusy(false);
-            return;
-        }
-
-        LastBackupValue.Text = "verifying...";
         await RefreshLastBackupAsync();
 
-        AppendLog("Rebooting Ubuntu host...");
-        await _ssh.RebootHostAsync();
-        AppendLog("Reboot command sent. The SSH connection dropping here is expected - that means the host is going down.");
+        AppendLog("Reboot command sent. The connection dropping here is expected - that means the host is going down.");
         AppendLog("valheim.service is enabled to auto-start on boot, so no further action is needed.");
         AppendLog("Use Check Status in a minute or two to confirm the server has come back online.");
 
@@ -624,18 +634,44 @@ public partial class MainWindow : Window
         ResetPollCountdown();
     }
 
+    // ------------------------------------------------------------------
+    // Header buttons - Runestones/Update/Settings still open the old
+    // SSH-based windows completely unchanged for now; they're their own
+    // separate migration passes, not part of this one.
+    // ------------------------------------------------------------------
+
     private void RunestonesButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_config is null) return;
-        var configWindow = new ConfigWindow(_config) { Owner = this };
+        var configWindow = new ConfigWindow(_config, _api) { Owner = this };
         configWindow.ShowDialog();
     }
 
     private void UpdateWindowButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_config is null) return;
-        var updateWindow = new UpdateWindow(_config) { Owner = this };
+        var updateWindow = new UpdateWindow(_config, _api) { Owner = this };
         updateWindow.ShowDialog();
+    }
+
+    private void SettingsWindowButton_Click(object sender, RoutedEventArgs e)
+    {
+        var settingsWindow = new SettingsWindow(_config, _api) { Owner = this };
+        settingsWindow.ShowDialog();
+    }
+
+    private void AccountButton_Click(object sender, RoutedEventArgs e)
+    {
+        var accountWindow = new AccountWindow(_config, _api) { Owner = this };
+        accountWindow.ShowDialog();
+
+        if (accountWindow.DidLogOut)
+        {
+            // Signed out from inside a live session - there's no graceful
+            // "downgrade to logged-out dashboard" state, so just restart
+            // the whole app cleanly; App.xaml.cs's login gate handles the
+            // rest from there.
+            System.Diagnostics.Process.Start(Environment.ProcessPath!);
+            Application.Current.Shutdown();
+        }
     }
 
     /// <summary>
@@ -647,8 +683,6 @@ public partial class MainWindow : Window
     /// </summary>
     private void ShowWhatsNewIfNeeded()
     {
-        if (_config is null) return;
-
         var notes = ReleaseNotes.ForCurrentVersion;
         if (notes is null) return;
 
@@ -664,17 +698,9 @@ public partial class MainWindow : Window
         }
     }
 
-    private void SettingsWindowButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_config is null) return;
-        var settingsWindow = new SettingsWindow(_config) { Owner = this };
-        settingsWindow.ShowDialog();
-    }
-
     private async void SwapWorldQuickButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_config is null) return;
-        var swapWindow = new SwapWorldWindow(_config) { Owner = this };
+        var swapWindow = new SwapWorldWindow(_api) { Owner = this };
         swapWindow.ShowDialog();
 
         // Whatever happened in there (swapped + restarted, swapped only, or
@@ -686,4 +712,16 @@ public partial class MainWindow : Window
     {
         Close();
     }
+
+    // ------------------------------------------------------------------
+    // JSON response shapes from the API
+    // ------------------------------------------------------------------
+
+    private record StatusResponse(string RequestedBy, string Raw);
+    private record ActionResponse(bool Success, string? Output, string? Stage);
+    private record LastBackupResponse(DateTime? LastBackupUtc);
+    private record WorldInfoResponse(string? World, long? UptimeSeconds);
+    private record PlayerJoinDto(string Name, DateTime JoinedAtUtc);
+    private record PlayersResponse(PlayerJoinDto[] Players);
+    private record UpdateCheckResponse(string? InstalledBuild, string? LatestBuild, bool UpdateAvailable);
 }

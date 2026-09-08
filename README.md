@@ -1,42 +1,80 @@
-# Valheim Server Control (v2 - C#/.NET)
+# Valheim Server Control (v3 - Real Accounts & API Backend)
 
-A WPF rewrite of the original PowerShell tool - same functionality
-(Start/Stop/Restart/Backup/Status/Logs over SSH), but as a real compiled
-`.exe`: a taskbar icon, no console window, and no dependency on the
-Windows OpenSSH client being installed (SSH is handled natively via
-[SSH.NET](https://github.com/sshnet/SSH.NET)).
+A two-part system for remotely managing a self-hosted Valheim dedicated
+server:
 
-This version **reuses the same `config.json`** the v1 installer writes to
-`%APPDATA%\ValheimControl\config.json` - if you already ran the v1
-installer on a PC, this app will just work with no reconfiguration.
+- **`src/ValheimControl`** - the Windows desktop app (WPF/.NET 8), what
+  you actually run day-to-day.
+- **`api/ValheimControlApi`** - a small ASP.NET Core (.NET 10) web
+  service that runs **on the Ubuntu server itself**, alongside
+  `valheim.service`. It's what actually performs every server action now
+  (start/stop/backup/world management/config editing/updates), behind
+  real user authentication.
+
+This is a genuine architecture change from earlier versions of this
+project, which talked to the server directly over SSH using one shared
+key across all PCs. That model is now retired for day-to-day use - see
+"What changed in v3" below.
+
+## What changed in v3
+
+- **Real user accounts.** Everyone who uses this app signs in with their
+  own username and password - not a shared SSH key everyone has equal
+  access through.
+- **Real Roles & Permissions**, enforced fresh on every single request
+  (not just hidden/disabled buttons in the UI). Owner has full access;
+  everyone else only has whatever their assigned Role explicitly grants.
+- **A real backend service** (`api/ValheimControlApi`) deployed on the
+  Ubuntu server, with its own systemd unit, its own SQLite database of
+  users/roles, and salted password hashing.
+- **The old shared "delete password"** for world deletion is gone -
+  deletion is now genuinely Owner-gated by the API instead.
+- **One thing didn't move to the API**: the launch-time enforced-update
+  check (`AppUpdateRequiredWindow`) still uses the original SSH
+  connection to read `/opt/valheim/app_version.txt`. Everything else -
+  the dashboard, Runestones, Update, Settings - runs on the API.
 
 ## Requirements to build
 
-- [.NET 8 SDK](https://dotnet.microsoft.com/download) (Windows)
-- Windows 10/11 (WPF is Windows-only)
+- **WPF app**: [.NET 8 SDK](https://dotnet.microsoft.com/download)
+  (Windows), Windows 10/11
+- **API**: [.NET 10 SDK](https://dotnet.microsoft.com/download) (can be
+  installed alongside .NET 8 with no conflict), and on the server side,
+  Ubuntu 26.04's own package repos already carry the matching
+  `aspnetcore-runtime-10.0`
 
 ## Project Layout
 
 ```
 ValheimControl.NET/
 ├── ValheimControl.sln
+├── TODO.md                        # roadmap, kept outside the codebase
+├── RELEASE_GUIDE.txt              # step-by-step release checklist
 ├── src/
-│   └── ValheimControl/
-│       ├── ValheimControl.csproj
-│       ├── App.xaml / App.xaml.cs
-│       ├── MainWindow.xaml / MainWindow.xaml.cs
-│       ├── Models/
-│       │   └── AppConfig.cs
-│       ├── Services/
-│       │   ├── ConfigService.cs
-│       │   └── SshService.cs
-│       └── Assets/
-│           └── valheim.ico      # (optional) add your own icon here
-├── .gitignore
-└── README.md
+│   └── ValheimControl/            # the WPF desktop app
+│       ├── App.xaml.cs            # startup flow: config -> version check -> login gate -> dashboard
+│       ├── MainWindow.xaml.cs     # main dashboard - fully API-backed
+│       ├── LoginWindow.xaml.cs    # sign-in + remember-me
+│       ├── AccountWindow.xaml.cs  # your own profile, password change, logout
+│       ├── UsersRolesWindow.xaml.cs  # Owner-only: manage accounts and roles
+│       ├── ConfigWindow.xaml.cs   # Runestones - config editing + world management
+│       ├── UpdateWindow.xaml.cs
+│       ├── SettingsWindow.xaml.cs
+│       ├── SetupWindow.xaml.cs    # first-run SSH wizard (still used - see below)
+│       ├── Models/AppConfig.cs
+│       └── Services/
+│           ├── ApiClient.cs       # talks to api/ValheimControlApi over HTTP
+│           ├── SshService.cs      # legacy - only the version-check still uses this
+│           └── ConfigService.cs
+└── api/
+    └── ValheimControlApi/         # the backend service - deployed to the Ubuntu server
+        ├── README.md              # full deployment instructions live here
+        ├── Program.cs             # every endpoint
+        ├── Data/                  # User, Role, AppDbContext (EF Core + SQLite)
+        └── Services/              # PasswordHasher, ProcessRunner, Permissions
 ```
 
-## Building and running (development)
+## Building and running the WPF app (development)
 
 ```powershell
 cd ValheimControl.NET
@@ -51,84 +89,61 @@ cd ValheimControl.NET
 dotnet publish src\ValheimControl -c Release -r win-x64 --self-contained true
 ```
 
-The output `.exe` will be at:
-
+Output lands at:
 ```
 src\ValheimControl\bin\Release\net8.0-windows\win-x64\publish\ValheimControl.exe
 ```
 
-This is a **self-contained** build, meaning the target PC does **not**
-need the .NET runtime installed - just copy `ValheimControl.exe` over
-(it's a larger file, ~60-80 MB, because the runtime is bundled in).
+Self-contained - the target PC doesn't need the .NET runtime installed.
+
+## The API backend
+
+Full build/deploy instructions (installing the runtime on Ubuntu,
+publishing, the systemd service, testing with curl) live in
+[`api/ValheimControlApi/README.md`](api/ValheimControlApi/README.md) -
+that file is kept up to date as the source of truth for deployment,
+rather than duplicated here.
 
 ## First-time setup on a new PC
 
-The app now includes a built-in setup wizard - no dependency on the v1
-PowerShell installer.
+Two separate things need to be set up now, not just one:
 
-1. Run `ValheimControl.exe` (or `dotnet run --project src\ValheimControl`
-   during development) on a PC with no existing config.
-2. Since no `config.json` exists yet, the **Setup** window opens automatically.
-3. Enter:
-   - **Server IP or hostname** - your Ubuntu server's LAN IP
-   - **SSH username** - typically `valheim-control`
-   - **SSH port** - `22` unless you've changed it
-   - **Account password** - entered once, never stored, used only to copy
-     this PC's new public key into the server's `authorized_keys`
-4. Click **Run Setup**. The wizard will:
-   - Generate a new ED25519 key pair for this PC (or reuse one if it
-     already exists at `%USERPROFILE%\.ssh\valheim_control_ed25519`)
-   - Copy the public key to the server over a password-authenticated SSH
-     connection
-   - Write `%APPDATA%\ValheimControl\config.json`
-   - Test a passwordless connection using the new key
-   - Create Desktop and Start Menu shortcuts
-5. Once you see "Setup complete", click **Continue to App** to open the
-   main control window.
+### 1. The SSH wizard (unchanged from earlier versions)
 
-**Note:** key generation still shells out to `ssh-keygen.exe` (the
-Windows OpenSSH Client optional feature), since .NET/SSH.NET doesn't
-provide a key-generation utility. This is only needed once, during
-setup - normal day-to-day use (Start/Stop/Restart/Backup/Logs) never
-touches `ssh.exe` and works even if the OpenSSH client isn't installed.
+Still needed for the launch-time version check. Run
+`ValheimControl.exe` with no existing `config.json` and the Setup window
+opens automatically - enter the server's address, SSH username
+(`valheim-control`), port, and a password used once to copy this PC's
+new key to the server. See the wizard itself for the full walkthrough;
+nothing about this part changed.
 
-If you're running via `dotnet run` during development, shortcuts will
-point at a temporary build path. Re-run the wizard after
-`dotnet publish` (see below) to point shortcuts at the permanent `.exe`.
+### 2. Signing in (new)
 
-*(If you already ran the old v1 PowerShell installer on this PC, its
-`config.json` is fully compatible - v2 will detect it and skip the
-wizard entirely.)*
+Once SSH setup finishes, you'll be prompted to sign in with a real
+account - this is separate from the SSH key. **Owner provisions
+accounts**, not self-registration: ask whoever's the Owner (via the
+**Manage Users & Roles** window, reachable from the Account page) to
+create you a username, password, and assign a Role. There's no way to
+create your own account from the login screen by design - see
+`TODO.md` for the reasoning.
 
-## Notes on the SSH implementation
+## Roles & Permissions
 
-- Uses `Renci.SshNet` (SSH.NET) for a native, in-process SSH connection -
-  no `ssh.exe` subprocess, no PATH dependency.
-- Authenticates using the ED25519 private key referenced in `config.json`
-  (`SshKeyPath`), same key file the v1 installer generates.
-- Each button click opens a short-lived SSH connection, runs one command,
-  and disconnects - simple and stateless, matching the v1 tool's behavior.
-
-## Server-side permission required for "Backup + Reboot Server"
-
-That button additionally needs a `reboot` rule in
-`/etc/sudoers.d/valheim-control` (not required for the other buttons):
-
-```
-valheim-control ALL=(root) NOPASSWD: /usr/sbin/reboot
-```
-
-Run `which reboot` on the server first to confirm the exact path before
-adding this line - sudoers matches the path exactly, and it's occasionally
-`/sbin/reboot` instead depending on the distro.
+A fixed set of real, gate-able actions (starting/stopping the server,
+backups, world management, config edits, updates, backup settings) -
+Owner always has all of them; anyone else only has what their assigned
+Role explicitly grants. Enforced with a fresh database lookup on every
+single request, not just hidden buttons in the UI - see
+`api/ValheimControlApi/Services/Permissions.cs` for the exact list.
 
 ## Roadmap
 
-- [x] Built-in setup wizard (generate key, copy to server, write config)
-- [ ] System tray icon with live status polling
-- [ ] Toast notification when a scheduled backup completes
-- [ ] MSI or Inno Setup packaged installer
-- [ ] Persistent SSH connection option (avoid reconnect overhead per click)
+See `TODO.md` for the actively maintained list. At a glance, still open:
+- User self-service role-change requests + a notification/mailbox system
+- Silent delta-based auto-updates (Velopack) - deferred until the app
+  settles down further
+- EF Core migrations to replace `EnsureCreated()` on the API, now that
+  schema changes have stabilized
 
 ## License
 

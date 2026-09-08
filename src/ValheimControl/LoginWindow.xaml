@@ -1,0 +1,84 @@
+<Window x:Class="ValheimControl.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Valheim Control — Sign In (New API Mode)"
+        Width="460" SizeToContent="Height"
+        Background="{StaticResource BgDarkBrush}"
+        Foreground="{StaticResource TextPrimaryBrush}"
+        FontFamily="Segoe UI"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display"
+        Closing="Window_Closing">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0">
+            <Border Height="4" Background="{StaticResource ChevronBandBrush}" />
+            <Border Background="{StaticResource BgTitleBrush}"
+                    BorderBrush="{StaticResource BorderMutedBrush}"
+                    BorderThickness="0,0,0,1"
+                    Padding="20,12">
+                <StackPanel Orientation="Horizontal">
+                    <Rectangle Style="{StaticResource SectionAxeStyle}" />
+                    <TextBlock Text="SIGN IN · API MODE" Style="{StaticResource SectionHeaderStyle}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Margin="24">
+            <TextBlock Text="This is the new, real-user-account backend - separate from the existing SSH-based system. Nothing here affects your current setup."
+                       Style="{StaticResource SubtitleTextStyle}" Foreground="{StaticResource TextMutedBrush}"
+                       Margin="0,0,0,16" TextWrapping="Wrap" />
+
+            <Border x:Name="SignedInBanner" Background="{StaticResource BgTitleBrush}"
+                    BorderBrush="{StaticResource AccentGoldBrush}" BorderThickness="1"
+                    Padding="14,12" Margin="0,0,0,16" Visibility="Collapsed">
+                <Grid>
+                    <StackPanel Margin="0,0,100,0">
+                        <TextBlock x:Name="SignedInAsText" Text="Signed in" FontWeight="Bold" />
+                        <TextBlock x:Name="SignedInDetailText" Text=""
+                                   Style="{StaticResource SubtitleTextStyle}" Foreground="{StaticResource TextMutedBrush}"
+                                   Margin="0,2,0,0" />
+                    </StackPanel>
+                    <Button x:Name="AccountPageButton" Content="ACCOUNT" Style="{StaticResource ChipButtonStyle}"
+                            HorizontalAlignment="Right" VerticalAlignment="Center" Click="AccountPageButton_Click" />
+                </Grid>
+            </Border>
+
+            <StackPanel x:Name="LoginFormPanel">
+                <TextBlock Text="SERVER ADDRESS" Style="{StaticResource FieldLabelStyle}" />
+                <TextBox x:Name="ServerAddressBox" Margin="0,4,0,12" />
+
+                <TextBlock Text="USERNAME" Style="{StaticResource FieldLabelStyle}" />
+                <TextBox x:Name="UsernameBox" Margin="0,4,0,12" />
+
+                <TextBlock Text="PASSWORD" Style="{StaticResource FieldLabelStyle}" />
+                <PasswordBox x:Name="PasswordBox" Margin="0,4,0,16" />
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,16">
+                    <Button x:Name="LoginButton" Content="SIGN IN" Style="{StaticResource PrimaryButtonStyle}"
+                            Click="LoginButton_Click" />
+                </StackPanel>
+            </StackPanel>
+
+            <Border Style="{StaticResource DividerStyle}" Margin="0,0,0,16" />
+
+            <TextBlock Text="ONCE SIGNED IN" Style="{StaticResource FieldLabelStyle}" Margin="0,0,0,4" />
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                <Button x:Name="TestStatusButton" Content="TEST: CHECK STATUS" Style="{StaticResource ChipButtonStyle}"
+                        IsEnabled="False" Margin="0,0,8,0" Click="TestStatusButton_Click" />
+                <Button x:Name="SignOutButton" Content="SIGN OUT" Style="{StaticResource GhostButtonStyle}"
+                        IsEnabled="False" Click="SignOutButton_Click" />
+            </StackPanel>
+
+            <TextBox x:Name="OutputBox" Style="{StaticResource LogTextBoxStyle}" Height="120" />
+        </StackPanel>
+    </Grid>
+</Window>

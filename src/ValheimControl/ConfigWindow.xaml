@@ -39,10 +39,7 @@
                                 Style="{StaticResource ChipButtonStyle}"
                                 FontSize="15" Padding="8,4"
                                 ToolTip="Reload from server"
-                                Margin="0,0,10,0" Click="RefreshButton_Click" />
-                        <Button x:Name="ChangeDeletePasswordButton" Content="CHANGE DELETE PASSWORD"
-                                Style="{StaticResource ChipButtonStyle}"
-                                Click="ChangeDeletePasswordButton_Click" />
+                                Click="RefreshButton_Click" />
                     </StackPanel>
                 </Grid>
             </Border>

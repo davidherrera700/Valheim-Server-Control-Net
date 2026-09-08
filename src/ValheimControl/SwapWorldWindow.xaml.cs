@@ -1,6 +1,5 @@
+using System.Text.Json;
 using System.Windows;
-using System.Windows.Controls;
-using ValheimControl.Models;
 using ValheimControl.Services;
 using ValheimControl.Theme;
 
@@ -8,17 +7,16 @@ namespace ValheimControl;
 
 public partial class SwapWorldWindow : Window
 {
-    private const string StartServerFile = "start_server.sh";
+    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
-    private readonly SshService _ssh;
-    private string _currentContent = "";
+    private readonly ApiClient _api;
     private string _currentWorld = "";
 
-    public SwapWorldWindow(AppConfig config)
+    public SwapWorldWindow(ApiClient api)
     {
         InitializeComponent();
         DarkTitleBarHelper.Apply(this);
-        _ssh = new SshService(config);
+        _api = api;
         Loaded += SwapWorldWindow_Loaded;
         WorldPicker.SelectionChanged += (_, _) => SwapButton.IsEnabled = WorldPicker.SelectedItem is string;
     }
@@ -28,29 +26,41 @@ public partial class SwapWorldWindow : Window
         StatusText.Text = "Loading...";
         WorldPicker.IsEnabled = false;
 
-        var scriptResult = await _ssh.ReadConfigFileAsync(StartServerFile);
-        if (!scriptResult.Success)
+        var worldInfoResult = await _api.GetAsync("/api/world-info");
+        _currentWorld = "(unknown)";
+        if (worldInfoResult.Success)
         {
-            StatusText.Text = $"Couldn't load current configuration: {scriptResult.Output}";
-            return;
+            try
+            {
+                var info = JsonSerializer.Deserialize<WorldInfoResponse>(worldInfoResult.Output, JsonOptions);
+                _currentWorld = info?.World ?? "(unknown)";
+            }
+            catch
+            {
+                // leave _currentWorld as "(unknown)"
+            }
         }
-
-        _currentContent = scriptResult.Output == "(no output)" ? "" : scriptResult.Output;
-        _currentWorld = LaunchLineParser.GetQuotedValue(_currentContent, "world") ?? "(unknown)";
         CurrentWorldText.Text = _currentWorld;
 
-        var worldsResult = await _ssh.ListWorldsAsync();
+        var worldsResult = await _api.GetAsync("/api/worlds");
         WorldPicker.Items.Clear();
 
-        if (worldsResult.Success && worldsResult.Output != "(no output)")
+        if (worldsResult.Success)
         {
-            var worlds = worldsResult.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            foreach (var world in worlds)
+            try
             {
-                if (!string.Equals(world, _currentWorld, StringComparison.OrdinalIgnoreCase))
+                var worlds = JsonSerializer.Deserialize<WorldsResponse>(worldsResult.Output, JsonOptions)?.Worlds ?? [];
+                foreach (var world in worlds)
                 {
-                    WorldPicker.Items.Add(world);
+                    if (!string.Equals(world, _currentWorld, StringComparison.OrdinalIgnoreCase))
+                    {
+                        WorldPicker.Items.Add(world);
+                    }
                 }
+            }
+            catch
+            {
+                // leave the picker empty on an unexpected response shape
             }
         }
 
@@ -83,18 +93,19 @@ public partial class SwapWorldWindow : Window
         WorldPicker.IsEnabled = false;
         StatusText.Text = "Saving...";
 
-        var updatedContent = LaunchLineParser.SetQuotedValue(_currentContent, "world", newWorld);
-        var writeResult = await _ssh.WriteConfigFileAsync(StartServerFile, updatedContent);
+        var writeResult = await _api.PostAsync("/api/worlds/swap", new { world = newWorld });
 
         if (!writeResult.Success)
         {
-            StatusText.Text = $"Save failed: {writeResult.Output}";
+            var message = writeResult.StatusCode == 403
+                ? "Permission denied - your account doesn't have world-swap permission."
+                : $"Save failed: {writeResult.Output}";
+            StatusText.Text = message;
             SwapButton.IsEnabled = true;
             WorldPicker.IsEnabled = true;
             return;
         }
 
-        _currentContent = updatedContent;
         StatusText.Text = "Saved.";
 
         var restartNow = MessageBox.Show(
@@ -107,7 +118,7 @@ public partial class SwapWorldWindow : Window
         if (restartNow == MessageBoxResult.Yes)
         {
             StatusText.Text = "Restarting server...";
-            var restartResult = await _ssh.RestartServiceAsync();
+            var restartResult = await _api.PostAsync("/api/server/restart");
             StatusText.Text = restartResult.Success
                 ? "Restarted. The main window will pick up the new world on its next refresh."
                 : $"Restart failed: {restartResult.Output}";
@@ -121,4 +132,7 @@ public partial class SwapWorldWindow : Window
     {
         Close();
     }
+
+    private record WorldInfoResponse(string? World, long? UptimeSeconds);
+    private record WorldsResponse(string[] Worlds);
 }

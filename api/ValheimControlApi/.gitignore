@@ -1,0 +1,15 @@
+# Build output
+bin/
+obj/
+
+# The SQLite database contains real user accounts and password hashes -
+# never commit this, same reasoning as never committing SSH keys.
+*.db
+*.db-shm
+*.db-wal
+
+# OS/editor cruft
+.DS_Store
+Thumbs.db
+.vs/
+.idea/

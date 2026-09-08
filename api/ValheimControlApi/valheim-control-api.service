@@ -1,0 +1,22 @@
+[Unit]
+Description=Valheim Control API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/valheim-control-api
+ExecStart=/usr/bin/dotnet /opt/valheim-control-api/ValheimControlApi.dll
+Restart=always
+RestartSec=5
+
+# Bound only to the Tailscale interface's IP - not 0.0.0.0 - so this is
+# unreachable from the public internet regardless of firewall rules,
+# matching how SSH and everything else in this project is only ever
+# reached over Tailscale. Update the IP if the server's Tailscale address
+# ever changes.
+Environment=ASPNETCORE_URLS=http://100.71.61.39:5080
+Environment=ASPNETCORE_ENVIRONMENT=Production
+
+[Install]
+WantedBy=multi-user.target

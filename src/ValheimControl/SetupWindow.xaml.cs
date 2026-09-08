@@ -192,9 +192,36 @@ public partial class SetupWindow : Window
         ContinueButton.IsEnabled = true;
     }
 
-    private void ContinueButton_Click(object sender, RoutedEventArgs e)
+    private async void ContinueButton_Click(object sender, RoutedEventArgs e)
     {
-        var main = new MainWindow();
+        AppConfig config;
+        try
+        {
+            config = ConfigService.Load();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to load the configuration that was just written:\n{ex.Message}",
+                "Valheim Control - Config Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        // SSH setup (worlds/backups/config editing) is done - now also
+        // require signing into the new API-based system before reaching
+        // the dashboard, same login gate normal startup uses.
+        var loginWindow = new LoginWindow(config, blockingMode: true);
+
+        var previousShutdownMode = Application.Current.ShutdownMode;
+        Application.Current.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+        loginWindow.ShowDialog();
+        Application.Current.ShutdownMode = previousShutdownMode;
+
+        if (!loginWindow.Success || loginWindow.Api is null)
+        {
+            return; // login didn't succeed - stay on this window rather than proceeding
+        }
+
+        var main = new MainWindow(config, loginWindow.Api);
         main.Show();
         Close();
     }

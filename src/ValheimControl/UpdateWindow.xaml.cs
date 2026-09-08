@@ -9,15 +9,14 @@ namespace ValheimControl;
 public partial class UpdateWindow : Window
 {
     private readonly AppConfig _config;
-    private readonly SshService _ssh;
-    private readonly SteamUpdateService _steam = new();
+    private readonly ApiClient _api;
 
-    public UpdateWindow(AppConfig config)
+    public UpdateWindow(AppConfig config, ApiClient api)
     {
         InitializeComponent();
         DarkTitleBarHelper.Apply(this);
         _config = config;
-        _ssh = new SshService(config);
+        _api = api;
         Loaded += UpdateWindow_Loaded;
     }
 
@@ -87,45 +86,43 @@ public partial class UpdateWindow : Window
         StatusDot.Fill = AppTheme.TextSecondary;
         InstalledBuildText.Text = "—";
         LatestBuildText.Text = "—";
-        AppendOutput("Checking installed build...");
+        AppendOutput("Checking for updates...");
 
-        var installedResult = await _ssh.GetInstalledBuildIdAsync();
-        string? installedBuild = null;
+        var result = await _api.GetAsync("/api/update/check");
+        UpdateCheckDto? check = null;
 
-        if (installedResult.Success &&
-            installedResult.Output != "unknown" &&
-            installedResult.Output != "(no output)")
+        if (result.Success)
         {
-            installedBuild = installedResult.Output.Trim();
-            InstalledBuildText.Text = installedBuild;
-            AppendOutput($"Installed build: {installedBuild}");
-        }
-        else
-        {
-            InstalledBuildText.Text = "unknown";
-            AppendOutput($"Could not read installed build: {installedResult.Output}");
+            try
+            {
+                check = System.Text.Json.JsonSerializer.Deserialize<UpdateCheckDto>(
+                    result.Output, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch
+            {
+                // leave check null - handled below as "unable to fully check"
+            }
         }
 
-        AppendOutput("Checking latest build on Steam...");
-        var latestBuild = await _steam.GetLatestPublicBuildIdAsync();
+        var installedBuild = check?.InstalledBuild;
+        var latestBuild = check?.LatestBuild;
 
-        if (latestBuild is not null)
-        {
-            LatestBuildText.Text = latestBuild;
-            AppendOutput($"Latest public build on Steam: {latestBuild}");
-        }
-        else
-        {
-            LatestBuildText.Text = "unable to check";
-            AppendOutput("Could not reach Steam to check the latest build (network issue, or the API changed).");
-        }
+        InstalledBuildText.Text = installedBuild ?? "unknown";
+        AppendOutput(installedBuild is not null
+            ? $"Installed build: {installedBuild}"
+            : "Could not read the installed build.");
+
+        LatestBuildText.Text = latestBuild ?? "unable to check";
+        AppendOutput(latestBuild is not null
+            ? $"Latest public build on Steam: {latestBuild}"
+            : "Could not reach Steam to check the latest build (network issue, or the API changed).");
 
         if (installedBuild is null || latestBuild is null)
         {
             StatusText.Text = "Unable to fully check";
             StatusDot.Fill = AppTheme.StatusWarning;
         }
-        else if (installedBuild == latestBuild)
+        else if (!check!.UpdateAvailable)
         {
             StatusText.Text = "Up to date";
             StatusDot.Fill = AppTheme.StatusOnline;
@@ -138,6 +135,8 @@ public partial class UpdateWindow : Window
 
         RunUpdateButton.IsEnabled = true;
     }
+
+    private record UpdateCheckDto(string? InstalledBuild, string? LatestBuild, bool UpdateAvailable);
 
     private void AppendOutput(string text)
     {
@@ -168,14 +167,21 @@ public partial class UpdateWindow : Window
         AppendOutput("Starting update (backup -> stop -> SteamCMD update -> start)...");
         AppendOutput("This can take a few minutes - please wait.");
 
-        var result = await _ssh.RunServerUpdateAsync();
+        var result = await _api.PostAsync("/api/update/run");
 
-        AppendOutput(result.Success ? "Update script completed." : $"Update script reported a problem: {result.Output}");
-        if (!string.IsNullOrWhiteSpace(result.Output))
+        if (result.StatusCode == 403)
         {
-            AppendOutput("----- Update Output -----");
-            AppendOutput(result.Output);
-            AppendOutput("----- End Output -----");
+            AppendOutput("Permission denied - your account doesn't have update-run permission.");
+        }
+        else
+        {
+            AppendOutput(result.Success ? "Update script completed." : $"Update script reported a problem: {result.Output}");
+            if (!string.IsNullOrWhiteSpace(result.Output))
+            {
+                AppendOutput("----- Update Output -----");
+                AppendOutput(result.Output);
+                AppendOutput("----- End Output -----");
+            }
         }
 
         RefreshButton.IsEnabled = true;

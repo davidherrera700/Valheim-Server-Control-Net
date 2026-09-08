@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using ValheimControl.Models;
@@ -9,9 +10,10 @@ namespace ValheimControl;
 public partial class ConfigWindow : Window
 {
     private const string StartServerFile = "start_server.sh";
+    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     private readonly AppConfig _config;
-    private readonly SshService _ssh;
+    private readonly ApiClient _api;
     private string? _selectedFile;
     private string _originalContent = "";
     private string _currentContent = "";
@@ -19,12 +21,12 @@ public partial class ConfigWindow : Window
     private bool _suppressChangeEvents;
     private List<string> _knownWorlds = new();
 
-    public ConfigWindow(AppConfig config)
+    public ConfigWindow(AppConfig config, ApiClient api)
     {
         InitializeComponent();
         DarkTitleBarHelper.Apply(this);
         _config = config;
-        _ssh = new SshService(config);
+        _api = api;
         Loaded += ConfigWindow_Loaded;
     }
 
@@ -36,9 +38,14 @@ public partial class ConfigWindow : Window
         ["bannedlist.txt"] = "Blocklist",
     };
 
+    // Fixed whitelist matching what the API accepts - not tied to SshService
+    // anymore, but kept as the same 4 names for consistency.
+    private static readonly string[] AllowedConfigFiles =
+        ["start_server.sh", "adminlist.txt", "permittedlist.txt", "bannedlist.txt"];
+
     private async void ConfigWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        foreach (var file in SshService.AllowedConfigFiles)
+        foreach (var file in AllowedConfigFiles)
         {
             var row = new StackPanel();
             row.Children.Add(new TextBlock { Text = file });
@@ -78,17 +85,24 @@ public partial class ConfigWindow : Window
         WorldPicker.SelectedIndex = 0;
         WorldPicker.IsEnabled = false;
 
-        var result = await _ssh.ListWorldsAsync();
+        var result = await _api.GetAsync("/api/worlds");
         WorldPicker.Items.Clear();
         _knownWorlds.Clear();
 
-        if (result.Success && result.Output != "(no output)")
+        if (result.Success)
         {
-            var worlds = result.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            foreach (var world in worlds)
+            try
             {
-                WorldPicker.Items.Add(world);
-                _knownWorlds.Add(world);
+                var worlds = JsonSerializer.Deserialize<WorldsDto>(result.Output, JsonOptions)?.Worlds ?? [];
+                foreach (var world in worlds)
+                {
+                    WorldPicker.Items.Add(world);
+                    _knownWorlds.Add(world);
+                }
+            }
+            catch
+            {
+                // leave the picker empty on an unexpected response shape
             }
         }
 
@@ -140,6 +154,13 @@ public partial class ConfigWindow : Window
         NewWorldNameBox.Text = "";
     }
 
+    /// <summary>
+    /// Deletion is Owner-only, enforced fresh by the API on every request -
+    /// this replaces the old shared "delete password" entirely, same as
+    /// the main dashboard's Swap World popup already does. A non-Owner
+    /// account gets a clear "permission denied" instead of a password
+    /// prompt they could never have satisfied anyway.
+    /// </summary>
     private async void DeleteWorldButton_Click(object sender, RoutedEventArgs e)
     {
         if (WorldPicker.SelectedItem is not string selected) return;
@@ -166,10 +187,8 @@ public partial class ConfigWindow : Window
 
         if (confirm != MessageBoxResult.Yes) return;
 
-        if (!await ConfirmDeletePasswordAsync()) return;
-
         DeleteWorldButton.IsEnabled = false;
-        var result = await _ssh.DeleteWorldAsync(selected);
+        var result = await _api.DeleteAsync($"/api/worlds/{Uri.EscapeDataString(selected)}");
         DeleteWorldButton.IsEnabled = true;
 
         if (result.Success)
@@ -178,78 +197,16 @@ public partial class ConfigWindow : Window
             MessageBox.Show($"'{selected}' archived successfully.", "Deleted",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
+        else if (result.StatusCode == 403)
+        {
+            MessageBox.Show("Permission denied - your account doesn't have world-delete permission.",
+                "Delete Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
         else
         {
             MessageBox.Show($"Delete failed: {result.Output}", "Delete Failed",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
-    }
-
-    /// <summary>
-    /// Local "type to confirm" gate before a deletion actually runs - not a
-    /// real security boundary (the SSH key already is one), just a guard
-    /// against an accidental click. The password itself is shared across
-    /// every PC controlling this server (stored as a hash server-side, not
-    /// per-PC), so setting it up once here means it applies everywhere.
-    /// </summary>
-    private async Task<bool> ConfirmDeletePasswordAsync()
-    {
-        var statusCheck = await _ssh.VerifyDeletePasswordAsync("");
-        var isConfigured = statusCheck.Success && statusCheck.Output.Trim() != "NOT_SET";
-
-        if (!isConfigured)
-        {
-            var setupChoice = MessageBox.Show(
-                "No delete confirmation password is set yet for this server. Set one now? " +
-                "It'll be required on every PC using this app to control this server, not just this one.\n\n" +
-                "(This is a safety net against accidental clicks, not real security - only a hash is " +
-                "stored on the server, never the actual password. Choose No to skip and proceed with " +
-                "this deletion anyway.)",
-                "Set a Shared Delete Password?",
-                MessageBoxButton.YesNoCancel,
-                MessageBoxImage.Question);
-
-            if (setupChoice == MessageBoxResult.Cancel) return false;
-
-            if (setupChoice == MessageBoxResult.Yes)
-            {
-                var setupDialog = new PasswordPromptWindow(
-                    "Enter a password that will be required before any world deletion, on any PC using this app.",
-                    "Set Delete Password") { Owner = this };
-
-                if (setupDialog.ShowDialog() != true || string.IsNullOrEmpty(setupDialog.EnteredPassword))
-                    return false;
-
-                var setResult = await _ssh.SetDeletePasswordAsync(setupDialog.EnteredPassword);
-                if (!setResult.Success)
-                {
-                    MessageBox.Show($"Failed to set password: {setResult.Output}", "Error",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
-                    return false;
-                }
-                // Fall through - also require it for this deletion, for consistency.
-            }
-            else
-            {
-                return true; // proceed without a password this one time
-            }
-        }
-
-        var dialog = new PasswordPromptWindow(
-            "Enter the delete confirmation password to proceed.",
-            "Confirm Deletion") { Owner = this };
-
-        if (dialog.ShowDialog() != true) return false;
-
-        var verifyResult = await _ssh.VerifyDeletePasswordAsync(dialog.EnteredPassword ?? "");
-        if (!verifyResult.Success || verifyResult.Output.Trim() != "MATCH")
-        {
-            MessageBox.Show("Incorrect password. Deletion cancelled.", "Incorrect Password",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-            return false;
-        }
-
-        return true;
     }
 
     // ------------------------------------------------------------------
@@ -292,7 +249,7 @@ public partial class ConfigWindow : Window
         FileMeta.Text = "Loading...";
         SaveButton.IsEnabled = false;
 
-        var result = await _ssh.ReadConfigFileAsync(filename);
+        var result = await _api.GetAsync($"/api/config/{filename}");
 
         if (!result.Success)
         {
@@ -300,8 +257,19 @@ public partial class ConfigWindow : Window
             return;
         }
 
+        string content;
+        try
+        {
+            content = JsonSerializer.Deserialize<ConfigFileDto>(result.Output, JsonOptions)?.Content ?? "";
+        }
+        catch
+        {
+            FileMeta.Text = "Failed to load: unexpected response.";
+            return;
+        }
+
         _selectedFile = filename;
-        _originalContent = result.Output == "(no output)" ? "" : result.Output;
+        _originalContent = content;
         _currentContent = _originalContent;
 
         var isStartServer = filename == StartServerFile;
@@ -555,7 +523,7 @@ public partial class ConfigWindow : Window
         SaveButton.IsEnabled = false;
         FileMeta.Text = "Saving...";
 
-        var result = await _ssh.WriteConfigFileAsync(_selectedFile, _currentContent);
+        var result = await _api.PutAsync($"/api/config/{_selectedFile}", new { content = _currentContent });
 
         if (result.Success)
         {
@@ -567,6 +535,11 @@ public partial class ConfigWindow : Window
             {
                 await OfferRestartAsync();
             }
+        }
+        else if (result.StatusCode == 403)
+        {
+            FileMeta.Text = "Permission denied - your account doesn't have config-write permission.";
+            SaveButton.IsEnabled = true;
         }
         else
         {
@@ -598,18 +571,33 @@ public partial class ConfigWindow : Window
 
         FileMeta.Text = "Restarting server...";
 
-        var restartResult = await _ssh.RestartServiceAsync();
+        var restartResult = await _api.PostAsync("/api/server/restart");
         if (!restartResult.Success)
         {
-            FileMeta.Text = $"Restart failed: {restartResult.Output}";
+            FileMeta.Text = restartResult.StatusCode == 403
+                ? "Permission denied - your account doesn't have server-restart permission."
+                : $"Restart failed: {restartResult.Output}";
             return;
         }
 
         // Give it a few seconds before checking - matches the same pattern
         // the main window uses after Start/Restart/Stop.
         await Task.Delay(3000);
-        var statusResult = await _ssh.CheckStatusAsync();
-        var isOnline = statusResult.Output.Contains("ActiveState=active");
+
+        var isOnline = false;
+        var statusResult = await _api.GetAsync("/api/status");
+        if (statusResult.Success)
+        {
+            try
+            {
+                var status = JsonSerializer.Deserialize<StatusDto>(statusResult.Output, JsonOptions);
+                isOnline = status?.Raw?.Contains("ActiveState=active") == true;
+            }
+            catch
+            {
+                // leave isOnline false
+            }
+        }
 
         FileMeta.Text = isOnline
             ? "Restarted - server is back online."
@@ -641,53 +629,6 @@ public partial class ConfigWindow : Window
         }
     }
 
-    private async void ChangeDeletePasswordButton_Click(object sender, RoutedEventArgs e)
-    {
-        var statusCheck = await _ssh.VerifyDeletePasswordAsync("");
-        var isConfigured = statusCheck.Success && statusCheck.Output.Trim() != "NOT_SET";
-
-        if (isConfigured)
-        {
-            // Require proving you know the current password before allowing
-            // a change - otherwise anyone could silently reset it and the
-            // "confirm you meant it" barrier would mean nothing.
-            var currentDialog = new PasswordPromptWindow(
-                "Enter the current delete password to change it.",
-                "Verify Current Password") { Owner = this };
-
-            if (currentDialog.ShowDialog() != true) return;
-
-            var verifyResult = await _ssh.VerifyDeletePasswordAsync(currentDialog.EnteredPassword ?? "");
-            if (!verifyResult.Success || verifyResult.Output.Trim() != "MATCH")
-            {
-                MessageBox.Show("Incorrect current password. Password not changed.", "Incorrect Password",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-                return;
-            }
-        }
-
-        var newDialog = new PasswordPromptWindow(
-            isConfigured
-                ? "Enter a new delete password. This replaces the current one on every PC using this app against this server."
-                : "Enter a delete password to set for this server.",
-            "Set Delete Password") { Owner = this };
-
-        if (newDialog.ShowDialog() != true || string.IsNullOrEmpty(newDialog.EnteredPassword)) return;
-
-        var setResult = await _ssh.SetDeletePasswordAsync(newDialog.EnteredPassword);
-        if (setResult.Success)
-        {
-            MessageBox.Show(
-                "Delete password updated. This applies to every PC using this app against this server.",
-                "Password Changed", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-        else
-        {
-            MessageBox.Show($"Failed to update password: {setResult.Output}", "Error",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-
     private void RevertButton_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedFile is null) return;
@@ -702,4 +643,8 @@ public partial class ConfigWindow : Window
 
         UpdateDirtyState();
     }
+
+    private record WorldsDto(string[] Worlds);
+    private record ConfigFileDto(string? Filename, string? Content);
+    private record StatusDto(string? RequestedBy, string? Raw);
 }

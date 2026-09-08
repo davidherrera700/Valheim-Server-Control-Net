@@ -10,6 +10,25 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        try
+        {
+            await RunStartupAsync();
+        }
+        catch (Exception ex)
+        {
+            // Console output isn't showing anything useful for this crash,
+            // so force it into a guaranteed-visible message box instead -
+            // this is temporary diagnostic instrumentation, not permanent.
+            MessageBox.Show(
+                $"Startup failed with an unhandled exception:\n\n{ex.GetType().Name}: {ex.Message}\n\n{ex.StackTrace}",
+                "Valheim Control - Startup Crash",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            Shutdown();
+        }
+    }
+
+    private async Task RunStartupAsync()
+    {
         if (!ConfigService.ConfigExists)
         {
             new SetupWindow().Show();
@@ -32,7 +51,27 @@ public partial class App : Application
         var mustUpdate = await CheckForRequiredUpdateAsync(config);
         if (mustUpdate) return; // AppUpdateRequiredWindow already triggered shutdown
 
-        new MainWindow().Show();
+        var loginWindow = new LoginWindow(config, blockingMode: true);
+
+        // WPF's default ShutdownMode is OnLastWindowClose - closing this
+        // dialog on a successful sign-in would otherwise be "the last
+        // window closing" and silently kill the whole app before we get a
+        // chance to show MainWindow next. Suspend that just for this one
+        // dialog, then restore it immediately after.
+        var previousShutdownMode = ShutdownMode;
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
+        loginWindow.ShowDialog();
+        ShutdownMode = previousShutdownMode;
+
+        if (!loginWindow.Success || loginWindow.Api is null)
+        {
+            // No windows are open at this point, and ShutdownMode is back
+            // to normal - the app exits cleanly here on its own, which is
+            // exactly what should happen when login didn't succeed.
+            return;
+        }
+
+        new MainWindow(config, loginWindow.Api).Show();
     }
 
     /// <summary>
