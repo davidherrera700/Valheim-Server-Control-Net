@@ -10,12 +10,12 @@ ExecStart=/usr/bin/dotnet /opt/valheim-control-api/ValheimControlApi.dll
 Restart=always
 RestartSec=5
 
-# Bound only to the Tailscale interface's IP - not 0.0.0.0 - so this is
-# unreachable from the public internet regardless of firewall rules,
-# matching how SSH and everything else in this project is only ever
-# reached over Tailscale. Update the IP if the server's Tailscale address
-# ever changes.
-Environment=ASPNETCORE_URLS=http://100.71.61.39:5080
+# Bound explicitly to two trusted addresses - the Tailscale interface
+# and the server's local LAN IP - never 0.0.0.0, so this stays
+# unreachable from the public internet regardless of firewall rules.
+# The LAN address was added so PCs on the same local network (not on
+# Tailscale) can reach the API too. Update either IP if they ever change.
+Environment=ASPNETCORE_URLS=http://100.71.61.39:5080;http://192.168.50.239:5080
 Environment=ASPNETCORE_ENVIRONMENT=Production
 
 # The JWT signing key lives ONLY on the server, in a file that is never

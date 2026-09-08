@@ -147,8 +147,9 @@ public partial class SetupWindow : Window
         AppendLog("Testing passwordless SSH connection...");
         var ssh = new SshService(config);
         var testResult = await ssh.RunCommandAsync("echo OK");
+        var connectionFullyWorking = testResult.Success && testResult.Output.Contains("OK");
 
-        if (testResult.Success && testResult.Output.Contains("OK"))
+        if (connectionFullyWorking)
         {
             AppendLog("Passwordless SSH connection successful.");
         }
@@ -158,41 +159,29 @@ public partial class SetupWindow : Window
             AppendLog("You can still continue, but double-check server-side authorized_keys and sudoers rules.");
         }
 
-        // 5. Create shortcuts
-        try
-        {
-            var exePath = Environment.ProcessPath
-                ?? System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
-
-            if (string.IsNullOrEmpty(exePath))
-            {
-                AppendLog("Could not determine this app's executable path - skipping shortcut creation.");
-            }
-            else
-            {
-                var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "valheim.ico");
-                var desktopPath = ShortcutService.DesktopShortcutPath("Valheim Control");
-                var startMenuPath = ShortcutService.StartMenuShortcutPath("Valheim Control");
-
-                ShortcutService.CreateShortcut(desktopPath, exePath, iconPath, "Valheim Server Control");
-                ShortcutService.CreateShortcut(startMenuPath, exePath, iconPath, "Valheim Server Control");
-
-                AppendLog("Shortcuts created on Desktop and in Start Menu.");
-                AppendLog("Note: if you're running via 'dotnet run', the shortcut points at a temporary build " +
-                          "output. Re-run setup after publishing the final .exe (dotnet publish) to point the " +
-                          "shortcut at the permanent location.");
-            }
-        }
-        catch (Exception ex)
-        {
-            AppendLog($"Shortcut creation failed (non-fatal): {ex.Message}");
-        }
+        // Note: Desktop/Start Menu shortcuts are created automatically by
+        // the Velopack installer (ValheimControl-win-Setup.exe) itself -
+        // no need to duplicate that here. This used to be a manual step
+        // back when the app was distributed as a raw published .exe.
 
         AppendLog("=== Setup complete ===");
         ContinueButton.IsEnabled = true;
+
+        // Only auto-advance on a genuinely clean success - if the
+        // connection test came back with a warning, deliberately require
+        // the manual click instead, so the person has to actually notice
+        // and consider that warning rather than being swept past it.
+        if (connectionFullyWorking)
+        {
+            AppendLog("Moving on to sign-in in a moment...");
+            await Task.Delay(1500);
+            await ProceedToLoginAsync();
+        }
     }
 
-    private async void ContinueButton_Click(object sender, RoutedEventArgs e)
+    private async void ContinueButton_Click(object sender, RoutedEventArgs e) => await ProceedToLoginAsync();
+
+    private async Task ProceedToLoginAsync()
     {
         AppConfig config;
         try

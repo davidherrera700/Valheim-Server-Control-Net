@@ -62,6 +62,7 @@ public partial class MainWindow : Window
         ThemeService.ApplyAccentColor(_config.AccentColorPreset);
 
         var apiHost = Uri.TryCreate(_config.ApiBaseUrl, UriKind.Absolute, out var uri) ? uri.Host : _config.ApiBaseUrl;
+        VersionLabel.Text = $"v{AppVersion.Current}";
         HostLabel.Text = $"{_api.Username} @ {apiHost}";
 
         ShowWhatsNewIfNeeded();

@@ -37,6 +37,16 @@ public static class ReleaseNotes
             "automatically",
         ["3.1.1"] =
             "Test release - confirming self-update works.",
+        ["3.2.0"] =
+            "- The server is now reachable over your local network too, not just " +
+            "Tailscale - no VPN needed for PCs on the same LAN\n" +
+            "- The first-time setup wizard now moves on to sign-in automatically " +
+            "after a clean connection, instead of requiring an extra click\n" +
+            "- Fixed a crash on the sign-in screen caused by a missing web address " +
+            "format\n" +
+            "- Fixed the setup wizard's input fields and log window not matching " +
+            "the rest of the app's look\n" +
+            "- Added a First-Time Setup Guide, linked from the project's GitHub page",
     };
 
     public static string? ForCurrentVersion =>

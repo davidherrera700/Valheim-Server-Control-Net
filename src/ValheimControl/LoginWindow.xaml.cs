@@ -42,7 +42,13 @@ public partial class LoginWindow : Window
     {
         try
         {
-            ServerAddressBox.Text = _config.ApiBaseUrl ?? "";
+            // A correct default, same reasoning as the SSH wizard's own
+            // pre-filled fields - the server address for THIS deployment
+            // never changes, so nobody should ever need to type or guess
+            // it. Without this, it's very easy to type just the bare IP
+            // (matching the SSH wizard's field right above this one) and
+            // miss the http:// scheme and port this actually needs.
+            ServerAddressBox.Text = _config.ApiBaseUrl ?? "http://192.168.50.239:5080";
 
             if (string.IsNullOrWhiteSpace(_config.ApiBaseUrl) || string.IsNullOrWhiteSpace(_config.ApiSessionToken))
             {

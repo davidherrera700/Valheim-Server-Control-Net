@@ -28,7 +28,21 @@ public class ApiClient
 
     public ApiClient(string baseUrl)
     {
-        _baseUrl = baseUrl.TrimEnd('/');
+        var trimmed = baseUrl.Trim().TrimEnd('/');
+
+        // If someone types just the bare IP (missing http:// - an easy
+        // mistake, since the SSH wizard's server field right next to this
+        // one really does just want a bare IP), assume http rather than
+        // throwing a confusing "invalid absolute URI" exception later.
+        // Doesn't fix a missing port, but turns a hard crash into a
+        // request that at least gets as far as a clear connection error.
+        if (!trimmed.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+            !trimmed.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            trimmed = $"http://{trimmed}";
+        }
+
+        _baseUrl = trimmed;
     }
 
     public async Task<(bool Success, string? Error)> LoginAsync(string username, string password)

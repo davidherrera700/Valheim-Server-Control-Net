@@ -1,5 +1,9 @@
 # Valheim Server Control (v3 - Real Accounts & API Backend)
 
+> **Installing this for the first time?** See the
+> [First-Time Setup Guide](FIRST_TIME_SETUP.md) - a plain-language
+> walkthrough for anyone joining the server, not just developers.
+
 A two-part system for remotely managing a self-hosted Valheim dedicated
 server:
 
@@ -106,26 +110,15 @@ rather than duplicated here.
 
 ## First-time setup on a new PC
 
-Two separate things need to be set up now, not just one:
+For a plain-language, step-by-step walkthrough (aimed at anyone joining
+the server, not just developers), see the
+[First-Time Setup Guide](FIRST_TIME_SETUP.md).
 
-### 1. The SSH wizard (unchanged from earlier versions)
-
-Still needed for the launch-time version check. Run
-`ValheimControl.exe` with no existing `config.json` and the Setup window
-opens automatically - enter the server's address, SSH username
-(`valheim-control`), port, and a password used once to copy this PC's
-new key to the server. See the wizard itself for the full walkthrough;
-nothing about this part changed.
-
-### 2. Signing in (new)
-
-Once SSH setup finishes, you'll be prompted to sign in with a real
-account - this is separate from the SSH key. **Owner provisions
-accounts**, not self-registration: ask whoever's the Owner (via the
-**Manage Users & Roles** window, reachable from the Account page) to
-create you a username, password, and assign a Role. There's no way to
-create your own account from the login screen by design - see
-`TODO.md` for the reasoning.
+The short version: two separate things need to happen, not just one -
+the SSH wizard (connects this PC to the server, using the
+`valheim-control` account) and signing in with a real personal account
+(provisioned by Owner beforehand, not self-registration - see `TODO.md`
+for the reasoning behind that design choice).
 
 ## Roles & Permissions
 

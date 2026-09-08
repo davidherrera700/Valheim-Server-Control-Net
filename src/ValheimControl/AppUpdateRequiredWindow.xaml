@@ -60,13 +60,20 @@
             <TextBlock x:Name="ReleaseNotesText" TextWrapping="Wrap"
                        Style="{StaticResource SubtitleTextStyle}"
                        Foreground="{StaticResource TextMutedBrush}"
-                       Margin="0,0,0,20" Visibility="Collapsed" />
+                       Margin="0,0,0,16" Visibility="Collapsed" />
+
+            <TextBlock x:Name="UpdateStatusText" TextWrapping="Wrap" Text=""
+                       Style="{StaticResource SubtitleTextStyle}"
+                       Foreground="{StaticResource TextMutedBrush}"
+                       Margin="0,0,0,16" Visibility="Collapsed" />
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button x:Name="ExitButton" Content="EXIT" Style="{StaticResource GhostButtonStyle}"
                         Margin="0,0,10,0" Click="ExitButton_Click" />
-                <Button x:Name="ViewReleaseButton" Content="VIEW RELEASE" Style="{StaticResource DangerButtonStyle}"
-                        Click="ViewReleaseButton_Click" />
+                <Button x:Name="ViewReleaseButton" Content="VIEW RELEASE" Style="{StaticResource GhostButtonStyle}"
+                        Margin="0,0,10,0" Click="ViewReleaseButton_Click" />
+                <Button x:Name="UpdateNowButton" Content="UPDATE NOW" Style="{StaticResource DangerButtonStyle}"
+                        Click="UpdateNowButton_Click" />
             </StackPanel>
         </StackPanel>
     </Grid>
