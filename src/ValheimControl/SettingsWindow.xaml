@@ -136,7 +136,7 @@
                            Style="{StaticResource MonoTextStyle}" FontSize="12" />
             </Border>
 
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,20">
                 <TextBlock x:Name="BackupSettingsStatus" Text="" VerticalAlignment="Center"
                            Style="{StaticResource SubtitleTextStyle}" Foreground="{StaticResource TextMutedBrush}"
                            Margin="0,0,12,0" />
@@ -144,6 +144,20 @@
                         Style="{StaticResource PrimaryButtonStyle}" IsEnabled="False"
                         Click="SaveBackupSettingsButton_Click" />
             </StackPanel>
+
+            <TextBlock Text="DANGER ZONE" Style="{StaticResource DangerHeaderStyle}" FontSize="13" />
+            <Border Style="{StaticResource DangerDividerStyle}" Margin="0,4,0,12" />
+
+            <TextBlock TextWrapping="Wrap" Style="{StaticResource SubtitleTextStyle}"
+                       Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,10">
+                Removes Valheim Control from this PC only - shortcuts, files, and
+                registry entries. Does not touch the server, your account, or
+                anyone else's PC.
+            </TextBlock>
+
+            <Button x:Name="UninstallButton" Content="UNINSTALL FROM THIS PC"
+                    Style="{StaticResource DangerButtonStyle}" HorizontalAlignment="Right"
+                    Click="UninstallButton_Click" />
         </StackPanel>
     </Grid>
 </Window>

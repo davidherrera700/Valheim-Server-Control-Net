@@ -47,6 +47,12 @@ public static class ReleaseNotes
             "- Fixed the setup wizard's input fields and log window not matching " +
             "the rest of the app's look\n" +
             "- Added a First-Time Setup Guide, linked from the project's GitHub page",
+        ["3.2.3"] =
+            "- New: Uninstall from right inside the app (Settings > Danger Zone) - " +
+            "no need to go through Windows separately\n" +
+            "- The server status now honestly shows \"Unreachable\" during a real " +
+            "outage (like the scheduled 5am reboot) instead of silently leaving a " +
+            "stale \"Online\" label showing",
     };
 
     public static string? ForCurrentVersion =>

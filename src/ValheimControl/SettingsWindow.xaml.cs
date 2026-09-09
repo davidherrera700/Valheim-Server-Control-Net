@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -302,5 +304,68 @@ public partial class SettingsWindow : Window
         ThemeService.ApplyAccentColor(key);
 
         BuildAccentSwatches(); // redraw so the selection ring moves to the new choice
+    }
+
+    /// <summary>
+    /// Triggers the exact same uninstall Velopack registers with Windows'
+    /// own "Apps & Features" - Update.exe sits one level up from the
+    /// running app's own folder (...\ValheimControl\current\ becomes
+    /// ...\ValheimControl\Update.exe). There's no managed Velopack API for
+    /// this specifically (only Check/Download/Apply are exposed), so this
+    /// calls the documented CLI directly: "update.exe uninstall".
+    /// </summary>
+    private void UninstallButton_Click(object sender, RoutedEventArgs e)
+    {
+        var confirm = MessageBox.Show(
+            "This removes Valheim Control from THIS PC only - shortcuts, files, and registry entries.\n\n" +
+            "This doesn't affect the server, your account, or anyone else's PC - you'd need to reinstall " +
+            "and sign back in to use it again from here.\n\n" +
+            "Uninstall now?",
+            "Confirm Uninstall",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+        if (confirm != MessageBoxResult.Yes) return;
+
+        // AppContext.BaseDirectory always ends with a trailing separator
+        // (e.g. "...\ValheimControl\current\") - Directory.GetParent can
+        // unreliably return that SAME folder instead of walking up one
+        // level when given a path like that. DirectoryInfo.Parent doesn't
+        // have this ambiguity.
+        var installDir = new DirectoryInfo(AppContext.BaseDirectory).Parent?.FullName;
+        var updateExePath = installDir is null ? null : Path.Combine(installDir, "Update.exe");
+
+        if (updateExePath is null || !File.Exists(updateExePath))
+        {
+            MessageBox.Show(
+                "Couldn't find Update.exe - this only works for a real installed copy " +
+                "(via ValheimControl-win-Setup.exe), not a dev build.\n\n" +
+                $"Looked for it at:\n{updateExePath ?? "(could not compute a path)"}\n\n" +
+                "For a dev build, just delete the project's build output folder manually instead.",
+                "Uninstall Not Available",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        try
+        {
+            // --silent: we've already shown our own confirmation above, so
+            // this skips Update.exe's own redundant prompt.
+            Process.Start(new ProcessStartInfo(updateExePath, "uninstall --silent")
+            {
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Couldn't start the uninstaller:\n\n{ex.Message}", "Uninstall Failed",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        // Must exit promptly - Velopack's docs are explicit that files
+        // still in use inside the "current" folder can't be deleted, so
+        // hanging around here would leave a broken partial uninstall.
+        Application.Current.Shutdown();
     }
 }

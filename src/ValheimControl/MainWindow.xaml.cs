@@ -253,26 +253,38 @@ public partial class MainWindow : Window
         _isBusy = true;
         try
         {
+            var previousText = StateText.Text;
             var result = await _api.GetAsync("/api/status");
+
             if (result.Success)
             {
                 try
                 {
                     var parsed = JsonSerializer.Deserialize<StatusResponse>(result.Output, JsonOptions);
-                    var previousText = StateText.Text;
                     UpdateStatusLabel(parsed?.Raw ?? "");
-
-                    // Only write to the log when the state actually changes, so the
-                    // panel doesn't fill up with a line every poll cycle.
-                    if (StateText.Text != previousText)
-                    {
-                        AppendLog($"(auto-refresh) Status: {StateText.Text}");
-                    }
                 }
                 catch
                 {
                     // leave status label as-is on an unexpected response shape
                 }
+            }
+            else
+            {
+                // The request itself failed (network timeout, host mid-reboot,
+                // etc.) - reflect that honestly instead of silently leaving
+                // whatever the last successful poll showed. Leaving a stale
+                // "ONLINE" label up during a real outage is actively
+                // misleading, not just outdated.
+                SetStatusUnreachable();
+            }
+
+            // Only write to the log when the state actually changes, so the
+            // panel doesn't fill up with a line every poll cycle - covers
+            // Online -> Unreachable, Unreachable -> Online, and everything
+            // in between, all the same way.
+            if (StateText.Text != previousText)
+            {
+                AppendLog($"(auto-refresh) Status: {StateText.Text}");
             }
 
             await RefreshLastBackupAsync();
@@ -350,6 +362,20 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// A distinct state from anything ActiveState= can report - this means
+    /// the request itself couldn't complete (network timeout, host
+    /// rebooting, etc.), not that the server told us it's in some state.
+    /// Leaving the previous label showing during a real outage (e.g. the
+    /// scheduled 5am reboot) would be actively misleading, not just stale.
+    /// </summary>
+    private void SetStatusUnreachable()
+    {
+        StateText.Text = "UNREACHABLE";
+        StateText.Foreground = AppTheme.StatusWarning;
+        StateDot.Fill = AppTheme.StatusWarning;
+    }
+
+    /// <summary>
     /// Parses the {success, output} shape almost every action endpoint
     /// returns. Handles 403 Forbidden specially (empty body by design,
     /// since Results.Forbid() sends nothing back) with a clear message
@@ -385,6 +411,7 @@ public partial class MainWindow : Window
         var result = await _api.GetAsync("/api/status");
         if (!result.Success)
         {
+            SetStatusUnreachable();
             AppendLog($"Status check failed: {result.Output}");
             return;
         }

@@ -9,5 +9,5 @@ namespace ValheimControl;
 /// </summary>
 public static class AppVersion
 {
-    public const string Current = "3.2.0";
+    public const string Current = "3.2.3";
 }
